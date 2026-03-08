@@ -8,6 +8,9 @@ struct ContentView: View {
     @State private var previousBrightness: CGFloat = UIScreen.main.brightness
     @State private var autoBlackoutTimer: Timer?
     
+    let resolutions = ["3840x2160", "1920x1080", "1280x720", "640x480"]
+    let fpsList = [30, 60]
+    
     var body: some View {
         ZStack {
             if isScreenBlackedOut {
@@ -22,92 +25,130 @@ struct ContentView: View {
                         .padding()
                 }
             } else {
-                VStack(spacing: 20) {
-                    Text("RoflCamera")
-                        .font(.largeTitle)
-                        .bold()
-                    
-                    if cameraManager.isRunning {
-                        Text("Камера активна 🎥")
-                            .foregroundColor(.green)
-                            .font(.headline)
+                ScrollView {
+                    VStack(spacing: 20) {
+                        Text("RoflCamera")
+                            .font(.largeTitle)
+                            .bold()
+                            .padding(.top, 20)
                         
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Как подключиться:")
+                        if cameraManager.isRunning {
+                            Text("Камера активна 🎥")
+                                .foregroundColor(.green)
                                 .font(.headline)
                             
-                            Text("Wi-Fi:")
-                                .bold()
-                            if serverIPs.isEmpty {
-                                Text("Получение IP...")
-                            } else {
-                                ForEach(serverIPs, id: \\.self) { ip in
-                                    Text("http://\\(ip):8080")
-                                        .textSelection(.enabled)
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Настройки сервера:")
+                                    .font(.headline)
+                                
+                                Text("Wi-Fi:")
+                                    .bold()
+                                if serverIPs.isEmpty {
+                                    Text("Получение IP...")
+                                } else {
+                                    ForEach(serverIPs, id: \\.self) { ip in
+                                        Text("http://\\(ip):8080")
+                                            .textSelection(.enabled)
+                                    }
                                 }
+                                
+                                Text("USB:")
+                                    .bold()
+                                    .padding(.top, 5)
+                                Text("Программа для ПК подключится автоматически.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                            
+                            Button(action: {
+                                cameraManager.stop()
+                            }) {
+                                Text("Остановить стрим")
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.red)
+                                    .cornerRadius(10)
                             }
                             
-                            Text("По проводу (USB):")
-                                .bold()
-                                .padding(.top, 5)
-                            Text("Используйте программу для ПК. Она автоматически пробросит порт 8080.")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                        
-                        Button(action: {
-                            cameraManager.stop()
-                        }) {
-                            Text("Остановить")
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.red)
-                                .cornerRadius(10)
-                        }
-                        
-                        Button(action: {
-                            blackoutScreen()
-                        }) {
-                            Text("Выключить экран (Энергосбережение)")
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.blue)
-                                .cornerRadius(10)
-                        }
-                    } else {
-                        Button(action: {
-                            cameraManager.start()
-                            updateIPs()
-                            startAutoBlackoutTimer()
-                        }) {
-                            Text("Запустить камеру")
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.green)
-                                .cornerRadius(10)
+                            Button(action: {
+                                blackoutScreen()
+                            }) {
+                                Text("Выключить экран (Энергосбережение)")
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.blue)
+                                    .cornerRadius(10)
+                            }
+                            
+                            VStack {
+                                Text("Текущие параметры (синхронизируются с ПК):")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                    .padding(.top, 10)
+                                Text("\\(cameraManager.currentResolutionString) @ \\(cameraManager.currentFPS) FPS")
+                                    .bold()
+                            }
+                            
+                        } else {
+                            VStack(alignment: .leading, spacing: 15) {
+                                Text("Настройки по умолчанию")
+                                    .font(.headline)
+                                
+                                HStack {
+                                    Text("Разрешение:")
+                                    Spacer()
+                                    Picker("Разрешение", selection: $cameraManager.currentResolutionString) {
+                                        ForEach(resolutions, id: \\.self) { res in
+                                            Text(res).tag(res)
+                                        }
+                                    }
+                                    .pickerStyle(MenuPickerStyle())
+                                }
+                                
+                                HStack {
+                                    Text("Частота кадров:")
+                                    Spacer()
+                                    Picker("Частота кадров", selection: $cameraManager.currentFPS) {
+                                        ForEach(fpsList, id: \\.self) { fps in
+                                            Text("\\(fps) FPS").tag(fps)
+                                        }
+                                    }
+                                    .pickerStyle(MenuPickerStyle())
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                            
+                            Button(action: {
+                                cameraManager.start()
+                                updateIPs()
+                                startAutoBlackoutTimer()
+                            }) {
+                                Text("Запустить камеру")
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.green)
+                                    .cornerRadius(10)
+                            }
                         }
                     }
-                    
-                    if !cameraManager.isRunning {
-                        Text("Оптимизировано для OBS через MJPEG")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                    }
+                    .padding(.horizontal)
                 }
-                .padding()
                 .onTapGesture {
                     resetAutoBlackoutTimer()
                 }
             }
         }
         .onAppear {
-            UIApplication.shared.isIdleTimerDisabled = true // Запрещаем автоблокировку устройства
+            UIApplication.shared.isIdleTimerDisabled = true
             updateIPs()
         }
         .onDisappear {
@@ -147,7 +188,6 @@ struct ContentView: View {
         serverIPs = addresses
     }
     
-    // Энергосбережение экрана
     func blackoutScreen() {
         previousBrightness = UIScreen.main.brightness
         UIScreen.main.brightness = 0.0

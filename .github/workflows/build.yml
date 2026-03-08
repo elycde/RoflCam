@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -42,7 +42,7 @@ jobs:
           zip -qr RoflCamera.ipa Payload
           
       - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: RoflCamera
           path: RoflCamera-iOS/RoflCamera.ipa

@@ -50,7 +50,7 @@ struct ContentView: View {
                             }
                         } else {
                             if let firstIP = serverIPs.first {
-                                Text("\(firstIP)")
+                                Text("\(firstIP):\(portString)")
                                     .font(.headline)
                                     .foregroundColor(.white)
                             } else {

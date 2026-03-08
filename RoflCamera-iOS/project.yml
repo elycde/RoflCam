@@ -16,6 +16,8 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         NSCameraUsageDescription: Need camera access to stream video.
         NSLocalNetworkUsageDescription: Need network access to communicate with PC.
+        NSBonjourServices:
+          - "_roflcam._tcp"
         UIBackgroundModes:
           - fetch
           - processing

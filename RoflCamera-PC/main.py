@@ -31,10 +31,39 @@ class StreamingThread(threading.Thread):
         self.fps = fps
         self.update_callback = update_callback
         self.error_callback = error_callback
+        
         self.is_running = True
+        self.latest_jpg = None
+
+    def network_reader_loop(self):
+        import urllib.request
+        try:
+            stream = urllib.request.urlopen(self.url, timeout=5)
+            bytes_buffer = b''
+            
+            while self.is_running:
+                chunk = stream.read(32768)
+                if not chunk:
+                    break
+                bytes_buffer += chunk
+                
+                a = bytes_buffer.find(b'\xff\xd8')
+                b = bytes_buffer.find(b'\xff\xd9')
+                if a != -1 and b != -1:
+                    # If multiple frames arrived quickly, jump to the most recent one
+                    next_a = bytes_buffer.find(b'\xff\xd8', b+2)
+                    if next_a != -1 and bytes_buffer.find(b'\xff\xd9', next_a) != -1:
+                        bytes_buffer = bytes_buffer[next_a:]
+                        continue
+                        
+                    self.latest_jpg = bytes_buffer[a:b+2]
+                    bytes_buffer = bytes_buffer[b+2:]
+        except Exception as e:
+            if self.is_running:
+                self.error_callback(f"Ошибка чтения сети: {str(e)}")
+            self.is_running = False
 
     def run(self):
-        import urllib.request
         time.sleep(0.5)
         
         vcam = None
@@ -43,57 +72,51 @@ class StreamingThread(threading.Thread):
         except Exception:
             pass
             
+        reader_thread = threading.Thread(target=self.network_reader_loop, daemon=True)
+        reader_thread.start()
+        
+        last_processed_jpg = None
+        
         try:
-            stream = urllib.request.urlopen(self.url, timeout=5)
-            bytes_buffer = b''
-            
             while self.is_running:
-                bytes_buffer += stream.read(32768)
-                a = bytes_buffer.find(b'\xff\xd8')
-                b = bytes_buffer.find(b'\xff\xd9')
-                if a != -1 and b != -1:
-                    jpg = bytes_buffer[a:b+2]
+                jpg = self.latest_jpg
+                if jpg is None or jpg == last_processed_jpg:
+                    time.sleep(0.005)
+                    continue
                     
-                    # If there's another full frame waiting in the buffer, skip this old one
-                    next_a = bytes_buffer.find(b'\xff\xd8', b+2)
-                    if next_a != -1 and bytes_buffer.find(b'\xff\xd9', next_a) != -1:
-                        # Fast-forward to the newest frame to drop latency instantly
-                        bytes_buffer = bytes_buffer[next_a:]
-                        continue
-                        
-                    bytes_buffer = bytes_buffer[b+2:]
+                last_processed_jpg = jpg
+                
+                frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                if frame is not None:
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
-                    frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-                    if frame is not None:
-                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        
-                        if vcam:
-                            try:
-                                h, w, _ = frame_rgb.shape
-                                if w != self.width or h != self.height:
-                                    frame_for_vcam = cv2.resize(frame_rgb, (self.width, self.height))
-                                else:
-                                    frame_for_vcam = frame_rgb
-                                vcam.send(frame_for_vcam)
-                                # Removed vcam.sleep_until_next_frame() to eliminate network backpressure delay!
-                            except:
-                                pass
-                                
-                        # Обновление UI
+                    if vcam:
                         try:
-                            # Use fixed bounding box for UI to prevent window-resizing feedback loop
                             h, w, _ = frame_rgb.shape
-                            ui_max_w, ui_max_h = 800, 600
-                                
-                            scale = min(ui_max_w / w, ui_max_h / h)
-                            new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
-                            frame_resized = cv2.resize(frame_rgb, (new_w, new_h))
-                            
-                            img = Image.fromarray(frame_resized)
-                            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(new_w, new_h))
-                            self.update_callback(ctk_img)
-                        except Exception:
+                            if w != self.width or h != self.height:
+                                frame_for_vcam = cv2.resize(frame_rgb, (self.width, self.height))
+                            else:
+                                frame_for_vcam = frame_rgb
+                            vcam.send(frame_for_vcam)
+                            # Removed vcam.sleep_until_next_frame() to eliminate network backpressure delay!
+                        except:
                             pass
+                            
+                    # Обновление UI
+                    try:
+                        # Use fixed bounding box for UI to prevent window-resizing feedback loop
+                        h, w, _ = frame_rgb.shape
+                        ui_max_w, ui_max_h = 800, 600
+                            
+                        scale = min(ui_max_w / w, ui_max_h / h)
+                        new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
+                        frame_resized = cv2.resize(frame_rgb, (new_w, new_h))
+                        
+                        img = Image.fromarray(frame_resized)
+                        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(new_w, new_h))
+                        self.update_callback(ctk_img)
+                    except Exception:
+                        pass
         except Exception as e:
             self.error_callback(f"Ошибка стрима: {str(e)}")
             self.is_running = False

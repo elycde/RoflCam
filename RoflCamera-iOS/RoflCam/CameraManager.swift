@@ -76,28 +76,69 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     }
     
     private func applyCameraConfiguration() {
-        session.beginConfiguration()
-        
-        switch currentResolutionString {
-        case "3840x2160": session.sessionPreset = .hd4K3840x2160
-        case "1920x1080": session.sessionPreset = .hd1920x1080
-        case "1280x720": session.sessionPreset = .hd1280x720
-        case "640x480": session.sessionPreset = .vga640x480
-        default: session.sessionPreset = .hd1920x1080
-        }
-        
         if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+            
+            var targetWidth: Int32 = 1920
+            switch currentResolutionString {
+            case "3840x2160": targetWidth = 3840
+            case "1920x1080": targetWidth = 1920
+            case "1280x720": targetWidth = 1280
+            case "640x480": targetWidth = 640
+            default: targetWidth = 1920
+            }
+            
+            var bestFormat: AVCaptureDevice.Format?
+            var fallbackFormat: AVCaptureDevice.Format?
+            
+            for format in device.formats {
+                let desc = format.formatDescription
+                let dims = CMVideoFormatDescriptionGetDimensions(desc)
+                if dims.width == targetWidth {
+                    if fallbackFormat == nil { fallbackFormat = format }
+                    for range in format.videoSupportedFrameRateRanges {
+                        if Float64(currentFPS) >= range.minFrameRate && Float64(currentFPS) <= range.maxFrameRate {
+                            bestFormat = format
+                            break
+                        }
+                    }
+                }
+                if bestFormat != nil { break }
+            }
+            
+            session.beginConfiguration()
+            session.sessionPreset = .inputPriority
+            
             do {
                 try device.lockForConfiguration()
-                device.activeVideoMinFrameDuration = CMTime(value: 1, timescale: Int32(currentFPS))
-                device.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: Int32(currentFPS))
+                if let format = bestFormat ?? fallbackFormat {
+                    device.activeFormat = format
+                }
+                
+                var safeFPS = currentFPS
+                var isValid = false
+                for range in device.activeFormat.videoSupportedFrameRateRanges {
+                    if Float64(currentFPS) >= range.minFrameRate && Float64(currentFPS) <= range.maxFrameRate {
+                        isValid = true
+                        break
+                    }
+                }
+                if !isValid {
+                    safeFPS = Int(device.activeFormat.videoSupportedFrameRateRanges.map { $0.maxFrameRate }.max() ?? 30.0)
+                }
+                
+                device.activeVideoMinFrameDuration = CMTime(value: 1, timescale: Int32(safeFPS))
+                device.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: Int32(safeFPS))
                 device.unlockForConfiguration()
+                
+                DispatchQueue.main.async {
+                    self.currentFPS = safeFPS
+                }
             } catch {
                 print("Could not configure device framerate")
             }
+            
+            session.commitConfiguration()
         }
-        
-        session.commitConfiguration()
     }
     
     func setupCamera() {

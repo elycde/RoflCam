@@ -110,17 +110,17 @@ class CameraPanel(ctk.CTkFrame):
         self.title_lbl.pack(side="left", padx=10)
         
         self.conn_type_var = ctk.StringVar(value="Wi-Fi")
-        self.conn_radio_wifi = ctk.CTkRadioButton(self.top_bar, text="Wi-Fi", variable=self.conn_type_var, value="Wi-Fi")
+        self.conn_radio_wifi = ctk.CTkRadioButton(self.top_bar, text="Wi-Fi", variable=self.conn_type_var, value="Wi-Fi", command=self.on_setting_changed)
         self.conn_radio_wifi.pack(side="left", padx=10)
-        self.conn_radio_usb = ctk.CTkRadioButton(self.top_bar, text="USB (Кабель)", variable=self.conn_type_var, value="USB")
+        self.conn_radio_usb = ctk.CTkRadioButton(self.top_bar, text="USB (Кабель)", variable=self.conn_type_var, value="USB", command=self.on_setting_changed)
         self.conn_radio_usb.pack(side="left", padx=10)
         
         self.res_var = ctk.StringVar(value="1920x1080")
-        self.res_menu = ctk.CTkOptionMenu(self.top_bar, variable=self.res_var, values=["3840x2160", "1920x1080", "1280x720", "640x480"], width=100)
+        self.res_menu = ctk.CTkOptionMenu(self.top_bar, variable=self.res_var, values=["3840x2160", "1920x1080", "1280x720", "640x480"], width=100, command=self.on_setting_changed)
         self.res_menu.pack(side="left", padx=10)
         
         self.fps_var = ctk.StringVar(value="30")
-        self.fps_menu = ctk.CTkOptionMenu(self.top_bar, variable=self.fps_var, values=["30", "60", "120"], width=70)
+        self.fps_menu = ctk.CTkOptionMenu(self.top_bar, variable=self.fps_var, values=["30", "60", "120"], width=70, command=self.on_setting_changed)
         self.fps_menu.pack(side="left", padx=10)
         
         self.toggle_btn = ctk.CTkButton(self.top_bar, text="▶ Подключиться", command=self.toggle_stream, fg_color="green", hover_color="darkgreen")
@@ -133,6 +133,11 @@ class CameraPanel(ctk.CTkFrame):
         self.status_lbl = ctk.CTkLabel(self, text=f"Доступно по адресу: {camera.url}", text_color="gray")
         self.status_lbl.pack(side="bottom", pady=5)
         
+    def on_setting_changed(self, _=None):
+        if self.camera.stream_state:
+            self.stop_stream()
+            self.after(500, self.start_stream)
+            
     def toggle_stream(self):
         if self.camera.stream_state:
             self.stop_stream()

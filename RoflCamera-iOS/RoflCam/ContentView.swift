@@ -86,51 +86,49 @@ struct ContentView: View {
                     // Bottom Controls (Native Camera Style)
                     VStack(spacing: 0) {
                         // Settings row (Resolution & FPS)
-                        if !cameraManager.isRunning {
-                            HStack(spacing: 20) {
-                                Menu {
-                                    ForEach(resolutions, id: \.self) { res in
-                                        Button(res) { cameraManager.currentResolutionString = res }
-                                    }
-                                } label: {
-                                    Text(cameraManager.currentResolutionString)
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.yellow)
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .background(Color.black.opacity(0.6))
-                                        .clipShape(Capsule())
+                        HStack(spacing: 20) {
+                            Menu {
+                                ForEach(resolutions, id: \.self) { res in
+                                    Button(res) { cameraManager.currentResolutionString = res }
                                 }
-
-                                Menu {
-                                    ForEach(fpsList, id: \.self) { fps in
-                                        Button("\(fps) FPS") { cameraManager.currentFPS = fps }
-                                    }
-                                } label: {
-                                    Text("\(cameraManager.currentFPS) FPS")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.yellow)
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .background(Color.black.opacity(0.6))
-                                        .clipShape(Capsule())
-                                }
+                            } label: {
+                                Text(cameraManager.currentResolutionString)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.yellow)
+                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .background(Color.black.opacity(0.6))
+                                    .clipShape(Capsule())
                             }
-                            .padding(.bottom, 20)
-                            
-                            VStack(spacing: 5) {
-                                HStack(spacing: 15) {
-                                    Text("🔎")
-                                        .font(.caption2).foregroundColor(.white)
-                                    Slider(value: $cameraManager.zoomFactor, in: 1.0...5.0, step: 0.1)
-                                        .accentColor(.yellow)
+
+                            Menu {
+                                ForEach(fpsList, id: \.self) { fps in
+                                    Button("\(fps) FPS") { cameraManager.currentFPS = fps }
                                 }
-                                HStack(spacing: 15) {
-                                    Text("☀️")
-                                        .font(.caption2).foregroundColor(.white)
-                                    Slider(value: $cameraManager.exposureValue, in: -8.0...8.0, step: 0.5)
-                                        .accentColor(.yellow)
-                                }
-                            }.padding(.horizontal, 40).padding(.bottom, 20)
+                            } label: {
+                                Text("\(cameraManager.currentFPS) FPS")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.yellow)
+                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .background(Color.black.opacity(0.6))
+                                    .clipShape(Capsule())
+                            }
                         }
+                        .padding(.bottom, 20)
+                        
+                        VStack(spacing: 5) {
+                            HStack(spacing: 15) {
+                                Text("🔎")
+                                    .font(.caption2).foregroundColor(.white)
+                                Slider(value: $cameraManager.zoomFactor, in: 1.0...5.0, step: 0.1)
+                                    .accentColor(.yellow)
+                            }
+                            HStack(spacing: 15) {
+                                Text("☀️")
+                                    .font(.caption2).foregroundColor(.white)
+                                Slider(value: $cameraManager.exposureValue, in: -8.0...8.0, step: 0.5)
+                                    .accentColor(.yellow)
+                            }
+                        }.padding(.horizontal, 40).padding(.bottom, 20)
                         
                         // Action row (Shutter Button / Action Buttons)
                         HStack {

@@ -2,9 +2,17 @@ import Foundation
 import Network
 import UIKit
 
+class MJPEGClient {
+    let connection: NWConnection
+    var isSending = false
+    init(connection: NWConnection) {
+        self.connection = connection
+    }
+}
+
 class MJPEGServer {
     var listener: NWListener?
-    var connections: [NWConnection] = []
+    var clients: [MJPEGClient] = []
     let queue = DispatchQueue(label: "mjpeg.server")
     
     var onSettingsUpdate: ((String?, Int?, String?, Bool?) -> Void)?
@@ -14,7 +22,6 @@ class MJPEGServer {
             let parameters = NWParameters.tcp
             listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port) ?? .any)
             
-            // Set up Bonjour auto-discovery
             let serviceName = "RoflCam-\(UIDevice.current.name)-\(port)"
             listener?.service = NWListener.Service(name: serviceName, type: "_roflcam._tcp")
             
@@ -22,9 +29,7 @@ class MJPEGServer {
                 self?.handleNewConnection(connection)
             }
             listener?.start(queue: queue)
-        } catch {
-            print("Failed to start listener: \(error)")
-        }
+        } catch { }
     }
     
     func handleNewConnection(_ connection: NWConnection) {
@@ -65,7 +70,7 @@ class MJPEGServer {
             """
             connection.send(content: header.data(using: .utf8), completion: .contentProcessed { error in
                 if error == nil {
-                    self.queue.async { self.connections.append(connection) }
+                    self.queue.async { self.clients.append(MJPEGClient(connection: connection)) }
                 }
             })
         }
@@ -112,13 +117,16 @@ class MJPEGServer {
         fullData.append(footer.data(using: .utf8)!)
         
         queue.async {
-            for connection in self.connections {
-                if connection.state == .ready {
-                    connection.send(content: fullData, completion: .contentProcessed { _ in })
+            for client in self.clients {
+                if client.connection.state == .ready && !client.isSending {
+                    client.isSending = true
+                    client.connection.send(content: fullData, completion: .contentProcessed { _ in
+                        client.isSending = false
+                    })
                 }
             }
-            self.connections.removeAll { conn in
-                switch conn.state {
+            self.clients.removeAll { client in
+                switch client.connection.state {
                 case .cancelled, .failed: return true
                 default: return false
                 }

@@ -173,9 +173,18 @@ class CameraPanel(ctk.CTkFrame):
     def on_setting_changed(self, _=None):
         if self.camera.stream_state:
             self.send_settings_to_iphone()
-            self.stop_stream()
-            self.after(500, self.start_stream)
             
+            w, h = map(int, self.res_var.get().split('x'))
+            fps = int(self.fps_var.get())
+            
+            need_restart = False
+            if self.stream_thread:
+                if self.stream_thread.width != w or self.stream_thread.height != h or self.stream_thread.fps != fps:
+                    need_restart = True
+                    
+            if need_restart:
+                self.stop_stream()
+                self.after(500, self.start_stream)
     def toggle_stream(self):
         if self.camera.stream_state:
             self.stop_stream()

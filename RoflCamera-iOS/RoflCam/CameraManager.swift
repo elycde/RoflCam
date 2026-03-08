@@ -190,6 +190,16 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
                 print("Could not configure device framerate")
             }
             
+            if let output = session.outputs.first as? AVCaptureVideoDataOutput,
+               let connection = output.connection(with: .video) {
+                if connection.isVideoOrientationSupported {
+                    connection.videoOrientation = .landscapeRight
+                }
+                if connection.isVideoMirroringSupported {
+                    connection.isVideoMirrored = (self.currentLens == "front")
+                }
+            }
+            
             session.commitConfiguration()
         }
     }

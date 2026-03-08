@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import UIKit
 
 class MJPEGServer {
     var listener: NWListener?

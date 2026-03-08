@@ -41,7 +41,7 @@ struct ContentView: View {
                             Spacer()
                             
                             if let firstIP = serverIPs.first {
-                                Text("\\(firstIP):\\(portString)")
+                                Text("\(firstIP):\(portString)")
                                     .font(.caption2)
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 10).padding(.vertical, 5)
@@ -83,7 +83,7 @@ struct ContentView: View {
                         if !cameraManager.isRunning {
                             HStack(spacing: 20) {
                                 Menu {
-                                    ForEach(resolutions, id: \\.self) { res in
+                                    ForEach(resolutions, id: \.self) { res in
                                         Button(res) { cameraManager.currentResolutionString = res }
                                     }
                                 } label: {
@@ -96,11 +96,11 @@ struct ContentView: View {
                                 }
 
                                 Menu {
-                                    ForEach(fpsList, id: \\.self) { fps in
-                                        Button("\\(fps) FPS") { cameraManager.currentFPS = fps }
+                                    ForEach(fpsList, id: \.self) { fps in
+                                        Button("\(fps) FPS") { cameraManager.currentFPS = fps }
                                     }
                                 } label: {
-                                    Text("\\(cameraManager.currentFPS) FPS")
+                                    Text("\(cameraManager.currentFPS) FPS")
                                         .font(.system(size: 14, weight: .medium))
                                         .foregroundColor(.yellow)
                                         .padding(.horizontal, 12).padding(.vertical, 6)
@@ -109,6 +109,21 @@ struct ContentView: View {
                                 }
                             }
                             .padding(.bottom, 20)
+                            
+                            VStack(spacing: 5) {
+                                HStack(spacing: 15) {
+                                    Text("🔎")
+                                        .font(.caption2).foregroundColor(.white)
+                                    Slider(value: $cameraManager.zoomFactor, in: 1.0...5.0, step: 0.1)
+                                        .accentColor(.yellow)
+                                }
+                                HStack(spacing: 15) {
+                                    Text("☀️")
+                                        .font(.caption2).foregroundColor(.white)
+                                    Slider(value: $cameraManager.exposureValue, in: -8.0...8.0, step: 0.5)
+                                        .accentColor(.yellow)
+                                }
+                            }.padding(.horizontal, 40).padding(.bottom, 20)
                         }
                         
                         // Action row (Shutter Button / Action Buttons)

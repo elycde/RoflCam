@@ -198,10 +198,10 @@ class CameraPanel(ctk.CTkFrame):
             
     def update_frame(self, image):
         if self.camera.stream_state:
-            self.display_area.configure(image=image, text="")
+            self.after(0, lambda: self.display_area.configure(image=image, text=""))
             
     def handle_error(self, err_msg):
-        self.status_lbl.configure(text=err_msg, text_color="red")
+        self.after(0, lambda: self.status_lbl.configure(text=err_msg, text_color="red"))
         self.after(0, self.stop_stream)
 
 class App(ctk.CTk):
@@ -257,7 +257,7 @@ class App(ctk.CTk):
             # Stop stream if running
             # In a real app we might traverse children and call stop()
             self.tabs.delete(name)
-            del self.discovered_cameras[name]
+            self.discovered_cameras.pop(name, None)
             
     def on_closing(self):
         self.zeroconf.close()

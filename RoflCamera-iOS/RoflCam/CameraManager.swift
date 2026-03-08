@@ -9,6 +9,33 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     @Published var isRunning = false
     @Published var currentResolutionString = "1920x1080"
     @Published var currentFPS: Int = 30
+    
+    @Published var exposureValue: Float = 0.0 {
+        didSet {
+            if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+                do {
+                    try device.lockForConfiguration()
+                    let clamped = min(max(exposureValue, device.minExposureTargetBias), device.maxExposureTargetBias)
+                    device.setExposureTargetBias(clamped, completionHandler: nil)
+                    device.unlockForConfiguration()
+                } catch { }
+            }
+        }
+    }
+    @Published var zoomFactor: CGFloat = 1.0 {
+        didSet {
+            if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+                do {
+                    try device.lockForConfiguration()
+                    let maxZoom = min(device.activeFormat.videoMaxZoomFactor, 10.0)
+                    let clamped = min(max(zoomFactor, 1.0), maxZoom)
+                    device.videoZoomFactor = clamped
+                    device.unlockForConfiguration()
+                } catch { }
+            }
+        }
+    }
+    
     @Published var port: Int = 8080 {
         didSet {
             if isRunning {

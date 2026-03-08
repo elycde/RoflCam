@@ -23,7 +23,7 @@ class DiscoveredCamera:
         self.stream_state = False
 
 class StreamingThread(threading.Thread):
-    def __init__(self, url, width, height, fps, update_callback, error_callback, get_size_callback=None):
+    def __init__(self, url, width, height, fps, update_callback, error_callback):
         super().__init__(daemon=True)
         self.url = url
         self.width = width
@@ -31,7 +31,6 @@ class StreamingThread(threading.Thread):
         self.fps = fps
         self.update_callback = update_callback
         self.error_callback = error_callback
-        self.get_size_callback = get_size_callback
         self.is_running = True
 
     def run(self):
@@ -68,18 +67,15 @@ class StreamingThread(threading.Thread):
                                 else:
                                     frame_for_vcam = frame_rgb
                                 vcam.send(frame_for_vcam)
-                                vcam.sleep_until_next_frame()
+                                # Removed vcam.sleep_until_next_frame() to eliminate network backpressure delay!
                             except:
                                 pass
                                 
                         # Обновление UI
                         try:
+                            # Use fixed bounding box for UI to prevent window-resizing feedback loop
                             h, w, _ = frame_rgb.shape
-                            if self.get_size_callback:
-                                cw, ch = self.get_size_callback()
-                                ui_max_w, ui_max_h = max(100, cw - 20), max(100, ch - 20)
-                            else:
-                                ui_max_w, ui_max_h = 600, 450
+                            ui_max_w, ui_max_h = 800, 600
                                 
                             scale = min(ui_max_w / w, ui_max_h / h)
                             new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
@@ -143,17 +139,8 @@ class CameraPanel(ctk.CTkFrame):
         self.display_area = ctk.CTkLabel(self, text="Нажмите 'Подключиться' для создания виртуальной RoflCam", fg_color="black", text_color="gray", corner_radius=10)
         self.display_area.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
-        self.current_w = 600
-        self.current_h = 450
-        self.display_area.bind("<Configure>", self.on_display_resize)
-        
         self.status_lbl = ctk.CTkLabel(self, text=f"Доступно по адресу: {camera.url}", text_color="gray")
         self.status_lbl.pack(side="bottom", pady=5)
-        
-    def on_display_resize(self, event):
-        if event.width > 20 and event.height > 20:
-            self.current_w = event.width
-            self.current_h = event.height
         
     def send_settings_to_iphone(self):
         lens_map = {"Осн. камера": "back", "Ширик": "ultrawide", "Фронталка": "front", "Телевик": "telephoto"}
@@ -202,7 +189,7 @@ class CameraPanel(ctk.CTkFrame):
             self.status_lbl.configure(text="Статус: Запуск USB...", text_color="yellow")
             try:
                 self.usb_forwarder = subprocess.Popen(
-                    [sys.executable, "-m", "pymobiledevice3", "forward", str(self.camera.port), str(self.camera.port)],
+                    [sys.executable, "-m", "pymobiledevice3", "usbmux", "forward", str(self.camera.port), str(self.camera.port)],
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
                 )
@@ -225,8 +212,7 @@ class CameraPanel(ctk.CTkFrame):
         self.stream_thread = StreamingThread(
             stream_url, w, h, fps, 
             update_callback=self.update_frame, 
-            error_callback=self.handle_error,
-            get_size_callback=lambda: (self.current_w, self.current_h)
+            error_callback=self.handle_error
         )
         self.stream_thread.start()
 

@@ -39,6 +39,13 @@ class MJPEGServer {
             guard components.count >= 2 else { return }
             
             let path = components[1]
+            if path == "/ping" {
+                let response = "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nROFLCAM_OK"
+                connection.send(content: response.data(using: .utf8), completion: .contentProcessed { _ in
+                    connection.cancel()
+                })
+                return
+            }
             if path.hasPrefix("/settings?") {
                 self.processSettingsQuery(path: path)
                 let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\nOK"

@@ -224,6 +224,41 @@ class App(ctk.CTk):
         # Start looking for cameras
         self.browser = ServiceBrowser(self.zeroconf, "_roflcam._tcp.local.", self)
         
+        # Aggressive explicit subnet scanning
+        self.scan_subnet()
+        
+    def scan_subnet(self):
+        def do_scan():
+            import socket
+            import concurrent.futures
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.connect(('10.255.255.255', 1))
+                local_ip = s.getsockname()[0]
+            except Exception:
+                local_ip = '127.0.0.1'
+            finally:
+                s.close()
+                
+            if local_ip == '127.0.0.1': return
+            base_ip = ".".join(local_ip.split(".")[:-1]) + "."
+            
+            def check_ip(i):
+                test_ip = base_ip + str(i)
+                try:
+                    # Quick check for RoflCam
+                    r = requests.get(f"http://{test_ip}:8080/ping", timeout=0.3)
+                    if "ROFLCAM_OK" in r.text.upper():
+                        name = f"Найденная ({test_ip})"
+                        self.after(0, self.add_camera_tab, name, test_ip, 8080)
+                except Exception:
+                    pass
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+                list(executor.map(check_ip, range(1, 255)))
+                
+        threading.Thread(target=do_scan, daemon=True).start()
+        
     def add_service(self, zeroconf, type, name):
         info = zeroconf.get_service_info(type, name)
         if info:

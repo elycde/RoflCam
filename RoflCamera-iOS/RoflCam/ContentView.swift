@@ -49,9 +49,15 @@ struct ContentView: View {
                                     .cornerRadius(10)
                             }
                         } else {
-                            Text("RoflCam")
-                                .font(.headline)
-                                .foregroundColor(.white)
+                            if let firstIP = serverIPs.first {
+                                Text("\(firstIP)")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                            } else {
+                                Text("RoflCam")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                            }
                             Spacer()
                             HStack(spacing: 5) {
                                 Text("ПОРТ:")

@@ -13,28 +13,28 @@ appiconset_path = "RoflCam/Assets.xcassets/AppIcon.appiconset"
 os.makedirs(appiconset_path, exist_ok=True)
 
 sizes = [
-    (20, 1), (20, 2), (20, 3),
-    (29, 1), (29, 2), (29, 3),
-    (40, 1), (40, 2), (40, 3),
-    (60, 2), (60, 3),
-    (76, 1), (76, 2),
-    (83.5, 2),
-    (1024, 1)
+    (20, 1, "ipad"), (20, 2, "ipad"), (20, 2, "iphone"), (20, 3, "iphone"),
+    (29, 1, "ipad"), (29, 2, "ipad"), (29, 2, "iphone"), (29, 3, "iphone"),
+    (40, 1, "ipad"), (40, 2, "ipad"), (40, 2, "iphone"), (40, 3, "iphone"),
+    (60, 2, "iphone"), (60, 3, "iphone"),
+    (76, 1, "ipad"), (76, 2, "ipad"),
+    (83.5, 2, "ipad"),
+    (1024, 1, "ios-marketing")
 ]
 
 contents = {"images": [], "info": {"author": "xcode", "version": 1}}
 
-for size, scale in sizes:
+for size, scale, idiom in sizes:
     px_size = int(size * scale)
-    filename = f"Icon-{size}x{size}@{scale}x.png"
+    filename = f"Icon-{size}x{size}@{scale}x-{idiom}.png"
     filepath = os.path.join(appiconset_path, filename)
     
     resized = base_img.resize((px_size, px_size), Image.Resampling.LANCZOS)
     resized.save(filepath)
     
     contents["images"].append({
-        "size": f"{size}x{size}",
-        "idiom": "universal",
+        "size": f"{size}x{size}" if size != 83.5 else "83.5x83.5",
+        "idiom": idiom,
         "filename": filename,
         "scale": f"{scale}x"
     })

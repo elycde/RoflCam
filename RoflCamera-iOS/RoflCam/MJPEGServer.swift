@@ -7,7 +7,7 @@ class MJPEGServer {
     var connections: [NWConnection] = []
     let queue = DispatchQueue(label: "mjpeg.server")
     
-    var onSettingsUpdate: ((String, Int) -> Void)?
+    var onSettingsUpdate: ((String?, Int?, String?, Bool?) -> Void)?
     
     init(port: UInt16) {
         do {
@@ -78,19 +78,23 @@ class MJPEGServer {
         
         var newRes: String?
         var newFps: Int?
+        var newLens: String?
+        var newFlash: Bool?
         
         for item in queryItems {
             if item.name == "res", let value = item.value {
                 newRes = value
             } else if item.name == "fps", let value = item.value {
                 newFps = Int(value)
+            } else if item.name == "lens", let value = item.value {
+                newLens = value
+            } else if item.name == "flash", let value = item.value {
+                newFlash = (value == "1" || value == "true")
             }
         }
         
-        if let res = newRes, let fps = newFps {
-            DispatchQueue.main.async {
-                self.onSettingsUpdate?(res, fps)
-            }
+        DispatchQueue.main.async {
+            self.onSettingsUpdate?(newRes, newFps, newLens, newFlash)
         }
     }
     

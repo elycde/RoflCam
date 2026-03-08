@@ -86,7 +86,20 @@ struct ContentView: View {
                     // Bottom Controls (Native Camera Style)
                     VStack(spacing: 0) {
                         // Settings row (Resolution & FPS)
-                        HStack(spacing: 20) {
+                        HStack(spacing: 15) {
+                            Menu {
+                                ForEach(["back", "ultrawide", "telephoto", "front"], id: \.self) { lens in
+                                    Button(lens.capitalized) { cameraManager.currentLens = lens }
+                                }
+                            } label: {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(cameraManager.currentLens == "front" ? .blue : .yellow)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(Color.black.opacity(0.6))
+                                    .clipShape(Capsule())
+                            }
+
                             Menu {
                                 ForEach(resolutions, id: \.self) { res in
                                     Button(res) { cameraManager.currentResolutionString = res }
@@ -95,7 +108,7 @@ struct ContentView: View {
                                 Text(cameraManager.currentResolutionString)
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.yellow)
-                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(Color.black.opacity(0.6))
                                     .clipShape(Capsule())
                             }
@@ -108,8 +121,19 @@ struct ContentView: View {
                                 Text("\(cameraManager.currentFPS) FPS")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.yellow)
-                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(Color.black.opacity(0.6))
+                                    .clipShape(Capsule())
+                            }
+                            
+                            Button(action: {
+                                cameraManager.isFlashlightOn.toggle()
+                            }) {
+                                Image(systemName: cameraManager.isFlashlightOn ? "flashlight.on.fill" : "flashlight.off.fill")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(cameraManager.isFlashlightOn ? .white : .yellow)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(cameraManager.isFlashlightOn ? Color.yellow : Color.black.opacity(0.6))
                                     .clipShape(Capsule())
                             }
                         }

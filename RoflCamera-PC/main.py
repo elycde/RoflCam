@@ -123,6 +123,14 @@ class CameraPanel(ctk.CTkFrame):
         self.fps_menu = ctk.CTkOptionMenu(self.top_bar, variable=self.fps_var, values=["30", "60", "120"], width=70, command=self.on_setting_changed)
         self.fps_menu.pack(side="left", padx=10)
         
+        self.lens_var = ctk.StringVar(value="Осн. камера")
+        self.lens_menu = ctk.CTkOptionMenu(self.top_bar, variable=self.lens_var, values=["Осн. камера", "Ширик", "Фронталка", "Телевик"], width=110, command=self.on_setting_changed)
+        self.lens_menu.pack(side="left", padx=10)
+        
+        self.flash_var = ctk.BooleanVar(value=False)
+        self.flash_cb = ctk.CTkCheckBox(self.top_bar, text="Фонарик", variable=self.flash_var, command=self.on_setting_changed)
+        self.flash_cb.pack(side="left", padx=10)
+        
         self.toggle_btn = ctk.CTkButton(self.top_bar, text="▶ Подключиться", command=self.toggle_stream, fg_color="green", hover_color="darkgreen")
         self.toggle_btn.pack(side="right", padx=10)
         
@@ -133,8 +141,24 @@ class CameraPanel(ctk.CTkFrame):
         self.status_lbl = ctk.CTkLabel(self, text=f"Доступно по адресу: {camera.url}", text_color="gray")
         self.status_lbl.pack(side="bottom", pady=5)
         
+    def send_settings_to_iphone(self):
+        lens_map = {"Осн. камера": "back", "Ширик": "ultrawide", "Фронталка": "front", "Телевик": "telephoto"}
+        lens = lens_map.get(self.lens_var.get(), "back")
+        flash = "1" if self.flash_var.get() else "0"
+        
+        stream_url = f"http://127.0.0.1:{self.camera.port}" if self.conn_type_var.get() == "USB" else self.camera.url
+        settings_url = f"{stream_url}/settings?res={self.res_var.get()}&fps={self.fps_var.get()}&lens={lens}&flash={flash}"
+        
+        def push_settings():
+            try:
+                requests.get(settings_url, timeout=2)
+            except:
+                pass
+        threading.Thread(target=push_settings, daemon=True).start()
+        
     def on_setting_changed(self, _=None):
         if self.camera.stream_state:
+            self.send_settings_to_iphone()
             self.stop_stream()
             self.after(500, self.start_stream)
             
@@ -169,14 +193,8 @@ class CameraPanel(ctk.CTkFrame):
         else:
             self.status_lbl.configure(text=f"Статус: Подключение по Wi-Fi ({stream_url})", text_color="green")
 
-        # Отправляем параметры на iPhone
-        def send_settings():
-            try:
-                settings_url = f"{stream_url}/settings?res={self.res_var.get()}&fps={self.fps_var.get()}"
-                requests.get(settings_url, timeout=2)
-            except:
-                pass
-        threading.Thread(target=send_settings, daemon=True).start()
+        self.send_settings_to_iphone()
+
 
         w, h = map(int, self.res_var.get().split('x'))
         fps = int(self.fps_var.get())

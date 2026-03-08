@@ -10,9 +10,43 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     @Published var currentResolutionString = "1920x1080"
     @Published var currentFPS: Int = 30
     
+    @Published var currentLens: String = "back"
+    @Published var isFlashlightOn: Bool = false {
+        didSet {
+            updateFlashlight()
+        }
+    }
+    
+    private func getCurrentDevice() -> AVCaptureDevice? {
+        switch currentLens {
+        case "front":
+            return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+        case "telephoto":
+            return AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back) ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+        case "ultrawide":
+            return AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back) ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+        default:
+            return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+        }
+    }
+    
+    private func updateFlashlight() {
+        if let device = getCurrentDevice(), device.hasTorch {
+            do {
+                try device.lockForConfiguration()
+                if isFlashlightOn {
+                    try device.setTorchModeOn(level: 1.0)
+                } else {
+                    device.torchMode = .off
+                }
+                device.unlockForConfiguration()
+            } catch { }
+        }
+    }
+    
     @Published var exposureValue: Float = 0.0 {
         didSet {
-            if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+            if let device = getCurrentDevice() {
                 do {
                     try device.lockForConfiguration()
                     let clamped = min(max(exposureValue, device.minExposureTargetBias), device.maxExposureTargetBias)
@@ -24,7 +58,7 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     }
     @Published var zoomFactor: CGFloat = 1.0 {
         didSet {
-            if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+            if let device = getCurrentDevice() {
                 do {
                     try device.lockForConfiguration()
                     let maxZoom = min(device.activeFormat.videoMaxZoomFactor, 10.0)
@@ -42,8 +76,11 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
                 // Restart server with new port
                 server?.listener?.cancel()
                 server = MJPEGServer(port: UInt16(port))
-                server?.onSettingsUpdate = { [weak self] res, fps in
-                    self?.updateSettings(resolution: res, fps: fps)
+                server?.onSettingsUpdate = { [weak self] res, fps, lens, flash in
+                    self?.updateSettings(resolution: res ?? self?.currentResolutionString ?? "1920x1080", 
+                                         fps: fps ?? self?.currentFPS ?? 30,
+                                         lens: lens ?? self?.currentLens ?? "back",
+                                         flash: flash ?? self?.isFlashlightOn ?? false)
                 }
             }
         }
@@ -53,18 +90,24 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
         super.init()
         server = MJPEGServer(port: UInt16(port))
         
-        server?.onSettingsUpdate = { [weak self] res, fps in
-            self?.updateSettings(resolution: res, fps: fps)
+        server?.onSettingsUpdate = { [weak self] res, fps, lens, flash in
+            self?.updateSettings(resolution: res ?? self?.currentResolutionString ?? "1920x1080", 
+                                 fps: fps ?? self?.currentFPS ?? 30,
+                                 lens: lens ?? self?.currentLens ?? "back",
+                                 flash: flash ?? self?.isFlashlightOn ?? false)
         }
         
         setupCamera()
     }
     
-    func updateSettings(resolution: String, fps: Int) {
-        if self.currentResolutionString != resolution || self.currentFPS != fps {
-            self.currentResolutionString = resolution
-            self.currentFPS = fps
-            
+    func updateSettings(resolution: String, fps: Int, lens: String, flash: Bool) {
+        var changed = false
+        if self.currentResolutionString != resolution { self.currentResolutionString = resolution; changed = true }
+        if self.currentFPS != fps { self.currentFPS = fps; changed = true }
+        if self.currentLens != lens { self.currentLens = lens; changed = true }
+        if self.isFlashlightOn != flash { self.isFlashlightOn = flash } // No need to reconfig session just for flash
+        
+        if changed {
             if self.isRunning {
                 DispatchQueue.global(qos: .userInitiated).async {
                     self.applyCameraConfiguration()
@@ -76,7 +119,7 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     }
     
     private func applyCameraConfiguration() {
-        if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+        if let device = getCurrentDevice() {
             
             var targetWidth: Int32 = 1920
             switch currentResolutionString {
@@ -107,6 +150,16 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
             
             session.beginConfiguration()
             session.sessionPreset = .inputPriority
+            
+            // Switch inputs if device changed
+            for input in session.inputs {
+                session.removeInput(input)
+            }
+            if let newInput = try? AVCaptureDeviceInput(device: device) {
+                if session.canAddInput(newInput) {
+                    session.addInput(newInput)
+                }
+            }
             
             do {
                 try device.lockForConfiguration()
@@ -144,7 +197,7 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     func setupCamera() {
         session.beginConfiguration()
         
-        if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+        if let device = getCurrentDevice(),
            let input = try? AVCaptureDeviceInput(device: device) {
             if session.canAddInput(input) {
                 session.addInput(input)

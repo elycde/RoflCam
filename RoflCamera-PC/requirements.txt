@@ -4,3 +4,4 @@ opencv-python>=4.8.0
 Pillow>=10.0.0
 pyvirtualcam>=0.10.2
 requests>=2.31.0
+zeroconf>=0.119.0

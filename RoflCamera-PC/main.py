@@ -8,183 +8,51 @@ import requests
 import numpy as np
 import pyvirtualcam
 import customtkinter as ctk
-from PIL import Image, ImageTk
+from PIL import Image
+from zeroconf import ServiceBrowser, Zeroconf
 
-ctk.set_appearance_mode("System")
+ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-class RoflCameraApp(ctk.CTk):
-    def __init__(self):
-        super().__init__()
-        
-        self.title("RoflCamera Companion")
-        self.geometry("850x650")
-        
-        self.is_running = False
-        self.forwarder_process = None
-        self.camera_thread = None
-        
-        # UI Setup
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
-        
-        # Sidebar
-        self.sidebar_frame = ctk.CTkFrame(self, width=250, corner_radius=0)
-        self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(8, weight=1)
-        
-        self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="RoflCamera", font=ctk.CTkFont(size=20, weight="bold"))
-        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
-        
-        self.conn_type_var = ctk.StringVar(value="USB")
-        self.conn_type_usb = ctk.CTkRadioButton(self.sidebar_frame, text="USB (Кабель)", variable=self.conn_type_var, value="USB", command=self.update_ui)
-        self.conn_type_usb.grid(row=1, column=0, pady=10, padx=20, sticky="w")
-        
-        self.conn_type_wifi = ctk.CTkRadioButton(self.sidebar_frame, text="Wi-Fi", variable=self.conn_type_var, value="WIFI", command=self.update_ui)
-        self.conn_type_wifi.grid(row=2, column=0, pady=10, padx=20, sticky="w")
-        
-        self.ip_entry = ctk.CTkEntry(self.sidebar_frame, placeholder_text="IP адрес (напр. 192.168.1.5)")
-        self.ip_entry.grid(row=3, column=0, pady=10, padx=20, sticky="ew")
-        self.ip_entry.configure(state="disabled")
-        
-        # Settings
-        self.settings_label = ctk.CTkLabel(self.sidebar_frame, text="Настройки камеры:", font=ctk.CTkFont(weight="bold"))
-        self.settings_label.grid(row=4, column=0, pady=(20, 0), padx=20, sticky="w")
-        
-        self.res_var = ctk.StringVar(value="1920x1080")
-        self.res_menu = ctk.CTkOptionMenu(self.sidebar_frame, variable=self.res_var, values=["3840x2160", "1920x1080", "1280x720", "640x480"])
-        self.res_menu.grid(row=5, column=0, pady=10, padx=20, sticky="ew")
-        
-        self.fps_var = ctk.StringVar(value="30")
-        self.fps_menu = ctk.CTkOptionMenu(self.sidebar_frame, variable=self.fps_var, values=["30", "60"])
-        self.fps_menu.grid(row=6, column=0, pady=10, padx=20, sticky="ew")
-        
-        self.start_btn = ctk.CTkButton(self.sidebar_frame, text="Запустить трансляцию", command=self.toggle_stream)
-        self.start_btn.grid(row=7, column=0, pady=20, padx=20)
-        
-        self.status_label = ctk.CTkLabel(self.sidebar_frame, text="Статус: Отключено", text_color="gray")
-        self.status_label.grid(row=9, column=0, pady=20, padx=20, sticky="s")
-        
-        # Main content
-        self.main_frame = ctk.CTkFrame(self)
-        self.main_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-        self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_rowconfigure(0, weight=1)
-        
-        self.video_label = ctk.CTkLabel(self.main_frame, text="Ожидание подключения...")
-        self.video_label.grid(row=0, column=0, sticky="nsew")
-        
-        info_text = ("Как добавить в OBS: Добавьте источник 'Браузер' или 'Источник медиа', URL: http://127.0.0.1:8080\\n"
-                     "Или используйте в OBS 'Virtual Camera' (она сама подцепит этот поток в систему).")
-        self.info_label = ctk.CTkLabel(self.main_frame, text=info_text)
-        self.info_label.grid(row=1, column=0, pady=10)
-        
-    def update_ui(self):
-        if self.conn_type_var.get() == "WIFI":
-            self.ip_entry.configure(state="normal")
-        else:
-            self.ip_entry.configure(state="disabled")
-            
-    def toggle_stream(self):
-        if self.is_running:
-            self.stop_stream()
-        else:
-            self.start_stream()
-            
-    def start_stream(self):
+class DiscoveredCamera:
+    def __init__(self, name, ip, port):
+        self.name = name
+        self.ip = ip
+        self.port = port
+        self.url = f"http://{ip}:{port}"
+        self.stream_state = False
+
+class StreamingThread(threading.Thread):
+    def __init__(self, url, width, height, fps, update_callback, error_callback):
+        super().__init__(daemon=True)
+        self.url = url
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.update_callback = update_callback
+        self.error_callback = error_callback
         self.is_running = True
-        self.start_btn.configure(text="Остановить трансляцию", fg_color="red", hover_color="darkred")
-        
-        # Disable dropdowns while running
-        self.res_menu.configure(state="disabled")
-        self.fps_menu.configure(state="disabled")
-        
-        conn_type = self.conn_type_var.get()
-        stream_url = ""
-        
-        if conn_type == "USB":
-            self.status_label.configure(text="Статус: Запуск USB...", text_color="yellow")
-            try:
-                self.forwarder_process = subprocess.Popen(
-                    [sys.executable, "-m", "pymobiledevice3", "forward", "8080", "8080"],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-                )
-                time.sleep(1)
-                stream_url = "http://127.0.0.1:8080"
-                self.status_label.configure(text="Статус: USB Подключено", text_color="green")
-            except Exception as e:
-                self.status_label.configure(text=f"Ошибка: {e}", text_color="red")
-                self.stop_stream()
-                return
-        else:
-            ip = self.ip_entry.get().strip()
-            if not ip:
-                self.status_label.configure(text="Ошибка: Введите IP", text_color="red")
-                self.stop_stream()
-                return
-            if not ip.startswith('http'):
-                stream_url = f"http://{ip}:8080"
-            else:
-                stream_url = f"{ip}:8080"
-            self.status_label.configure(text="Статус: Wi-Fi Ожидание", text_color="yellow")
-            
-        # Send settings to sync with iPhone over network
-        # Fire-and-forget request
-        def send_settings():
-            try:
-                settings_url = f"{stream_url}/settings?res={self.res_var.get()}&fps={self.fps_var.get()}"
-                requests.get(settings_url, timeout=2)
-            except Exception as e:
-                print(f"Could not sync settings instantly: {e}")
-                
-        threading.Thread(target=send_settings, daemon=True).start()
-            
-        self.camera_thread = threading.Thread(target=self.process_stream, args=(stream_url,), daemon=True)
-        self.camera_thread.start()
-        
-    def stop_stream(self):
-        self.is_running = False
-        self.start_btn.configure(text="Запустить трансляцию", fg_color=['#3B8ED0', '#1F6AA5'], hover_color=['#36719F', '#144870'])
-        self.status_label.configure(text="Статус: Отключено", text_color="gray")
-        self.video_label.configure(image="", text="Отключено")
-        
-        self.res_menu.configure(state="normal")
-        self.fps_menu.configure(state="normal")
-        
-        if self.forwarder_process:
-            self.forwarder_process.terminate()
-            self.forwarder_process = None
-            
-    def process_stream(self, url):
-        # We add a slight delay to allow iPhone to reconfigure its internal properties first
+        self.cap = None
+
+    def run(self):
         time.sleep(0.5)
-        cap = cv2.VideoCapture(url)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.cap = cv2.VideoCapture(self.url)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         
-        if not cap.isOpened():
-            self.status_label.configure(text="Ошибка: Камера недоступна", text_color="red")
-            self.stop_stream()
+        if not self.cap.isOpened():
+            self.error_callback("Ошибка: Камера недоступна")
+            self.is_running = False
             return
             
-        self.status_label.configure(text="Статус: Трансляция идет", text_color="green")
-        
         vcam = None
-        
-        # Parse defined size
-        wanted_res = self.res_var.get().split('x')
-        v_width = int(wanted_res[0])
-        v_height = int(wanted_res[1])
-        v_fps = int(self.fps_var.get())
-
         try:
-            vcam = pyvirtualcam.Camera(width=v_width, height=v_height, fps=v_fps)
-            print(f'Virtual cam started: {vcam.device} ({vcam.width}x{vcam.height} @ {vcam.fps}fps)')
+            vcam = pyvirtualcam.Camera(width=self.width, height=self.height, fps=self.fps)
+            print(f'RoflCam Virtual Cam started: {vcam.device}')
         except Exception as e:
-            print(f"Не удалось запустить виртуальную камеру (OBS Virtual Camera not installed?): {e}")
+            print(f"Не удалось запустить виртуальную камеру (pyvirtualcam): {e}")
             
         while self.is_running:
-            ret, frame = cap.read()
+            ret, frame = self.cap.read()
             if not ret:
                 time.sleep(0.01)
                 continue
@@ -193,10 +61,9 @@ class RoflCameraApp(ctk.CTk):
             
             if vcam:
                 try:
-                    # In case MJPEG sends a slightly different resolution during init
                     h, w, _ = frame_rgb.shape
-                    if w != v_width or h != v_height:
-                        frame_for_vcam = cv2.resize(frame_rgb, (v_width, v_height))
+                    if w != self.width or h != self.height:
+                        frame_for_vcam = cv2.resize(frame_rgb, (self.width, self.height))
                     else:
                         frame_for_vcam = frame_rgb
                     vcam.send(frame_for_vcam)
@@ -204,9 +71,10 @@ class RoflCameraApp(ctk.CTk):
                 except:
                     pass
             
+            # Обновление UI
             try:
                 h, w, _ = frame_rgb.shape
-                # Adaptive scale for UI preserving aspect ratio
+                # Adaptive scale for UI
                 ui_max_w, ui_max_h = 600, 450
                 scale = min(ui_max_w / w, ui_max_h / h)
                 new_w, new_h = int(w * scale), int(h * scale)
@@ -214,20 +82,210 @@ class RoflCameraApp(ctk.CTk):
                 
                 img = Image.fromarray(frame_resized)
                 ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(new_w, new_h))
-                
-                self.after(0, self.update_image, ctk_img)
-            except Exception as e:
+                self.update_callback(ctk_img)
+            except Exception:
                 pass
                 
-        cap.release()
+        if self.cap:
+            self.cap.release()
         if vcam:
             vcam.close()
+
+    def stop(self):
+        self.is_running = False
+
+class CameraPanel(ctk.CTkFrame):
+    def __init__(self, master, camera: DiscoveredCamera, **kwargs):
+        super().__init__(master, **kwargs)
+        self.camera = camera
+        self.stream_thread = None
+        self.usb_forwarder = None
+        
+        # Upper bar (Settings)
+        self.top_bar = ctk.CTkFrame(self, fg_color="transparent")
+        self.top_bar.pack(fill="x", padx=10, pady=10)
+        
+        self.title_lbl = ctk.CTkLabel(self.top_bar, text=camera.name, font=ctk.CTkFont(size=16, weight="bold"))
+        self.title_lbl.pack(side="left", padx=10)
+        
+        self.conn_type_var = ctk.StringVar(value="Wi-Fi")
+        self.conn_radio_wifi = ctk.CTkRadioButton(self.top_bar, text="Wi-Fi", variable=self.conn_type_var, value="Wi-Fi")
+        self.conn_radio_wifi.pack(side="left", padx=10)
+        self.conn_radio_usb = ctk.CTkRadioButton(self.top_bar, text="USB (Кабель)", variable=self.conn_type_var, value="USB")
+        self.conn_radio_usb.pack(side="left", padx=10)
+        
+        self.res_var = ctk.StringVar(value="1920x1080")
+        self.res_menu = ctk.CTkOptionMenu(self.top_bar, variable=self.res_var, values=["3840x2160", "1920x1080", "1280x720", "640x480"], width=100)
+        self.res_menu.pack(side="left", padx=10)
+        
+        self.fps_var = ctk.StringVar(value="30")
+        self.fps_menu = ctk.CTkOptionMenu(self.top_bar, variable=self.fps_var, values=["30", "60", "120"], width=70)
+        self.fps_menu.pack(side="left", padx=10)
+        
+        self.toggle_btn = ctk.CTkButton(self.top_bar, text="▶ Подключиться", command=self.toggle_stream, fg_color="green", hover_color="darkgreen")
+        self.toggle_btn.pack(side="right", padx=10)
+        
+        # Display Area
+        self.display_area = ctk.CTkLabel(self, text="Нажмите 'Подключиться' для создания виртуальной RoflCam", fg_color="black", text_color="gray", corner_radius=10)
+        self.display_area.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        
+        self.status_lbl = ctk.CTkLabel(self, text=f"Доступно по адресу: {camera.url}", text_color="gray")
+        self.status_lbl.pack(side="bottom", pady=5)
+        
+    def toggle_stream(self):
+        if self.camera.stream_state:
+            self.stop_stream()
+        else:
+            self.start_stream()
             
-    def update_image(self, image):
-        if self.is_running:
-            self.video_label.configure(image=image, text="")
+    def start_stream(self):
+        self.camera.stream_state = True
+        self.toggle_btn.configure(text="■ Отключить", fg_color="red", hover_color="darkred")
+        
+        conn_type = self.conn_type_var.get()
+        stream_url = self.camera.url
+        
+        if conn_type == "USB":
+            self.status_lbl.configure(text="Статус: Запуск USB...", text_color="yellow")
+            try:
+                self.usb_forwarder = subprocess.Popen(
+                    [sys.executable, "-m", "pymobiledevice3", "forward", str(self.camera.port), str(self.camera.port)],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                )
+                time.sleep(1)
+                stream_url = f"http://127.0.0.1:{self.camera.port}"
+                self.status_lbl.configure(text="Статус: USB Подключено", text_color="green")
+            except Exception as e:
+                self.status_lbl.configure(text=f"Ошибка USB: {e}", text_color="red")
+                self.stop_stream()
+                return
+        else:
+            self.status_lbl.configure(text=f"Статус: Подключение по Wi-Fi ({stream_url})", text_color="green")
+
+        # Отправляем параметры на iPhone
+        def send_settings():
+            try:
+                settings_url = f"{stream_url}/settings?res={self.res_var.get()}&fps={self.fps_var.get()}"
+                requests.get(settings_url, timeout=2)
+            except:
+                pass
+        threading.Thread(target=send_settings, daemon=True).start()
+
+        w, h = map(int, self.res_var.get().split('x'))
+        fps = int(self.fps_var.get())
+        
+        self.stream_thread = StreamingThread(
+            stream_url, w, h, fps, 
+            update_callback=self.update_frame, 
+            error_callback=self.handle_error
+        )
+        self.stream_thread.start()
+
+    def stop_stream(self):
+        self.camera.stream_state = False
+        self.toggle_btn.configure(text="▶ Подключиться", fg_color="green", hover_color="darkgreen")
+        self.status_lbl.configure(text="Отключено", text_color="gray")
+        self.display_area.configure(image="", text="Отключено.")
+        
+        if self.stream_thread:
+            self.stream_thread.stop()
+            self.stream_thread = None
+            
+        if self.usb_forwarder:
+            self.usb_forwarder.terminate()
+            self.usb_forwarder = None
+            
+    def update_frame(self, image):
+        if self.camera.stream_state:
+            self.display_area.configure(image=image, text="")
+            
+    def handle_error(self, err_msg):
+        self.status_lbl.configure(text=err_msg, text_color="red")
+        self.after(0, self.stop_stream)
+
+class App(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.title("RoflCam Studio")
+        self.geometry("1000x700")
+        
+        # Discovery variables
+        self.zeroconf = Zeroconf()
+        self.discovered_cameras = {}
+        
+        # Grid
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        
+        self.tabs = ctk.CTkTabview(self)
+        self.tabs.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        
+        # Start looking for cameras
+        self.browser = ServiceBrowser(self.zeroconf, "_roflcam._tcp.local.", self)
+        
+    def add_service(self, zeroconf, type, name):
+        info = zeroconf.get_service_info(type, name)
+        if info:
+            ip = ".".join([str(x) for x in info.addresses[0]])
+            port = info.port
+            clean_name = name.replace("._roflcam._tcp.local.", "").replace("RoflCam-", "Камера №")
+            
+            # Switch to main thread for UI changes
+            self.after(0, self.add_camera_tab, clean_name, ip, port)
+
+    def remove_service(self, zeroconf, type, name):
+        clean_name = name.replace("._roflcam._tcp.local.", "").replace("RoflCam-", "Камера №")
+        self.after(0, self.remove_camera_tab, clean_name)
+
+    def update_service(self, zeroconf, type, name):
+        pass
+        
+    def add_camera_tab(self, name, ip, port):
+        if name in self.discovered_cameras:
+            return
+            
+        cam = DiscoveredCamera(name, ip, port)
+        self.discovered_cameras[name] = cam
+        
+        self.tabs.add(name)
+        panel = CameraPanel(self.tabs.tab(name), cam)
+        panel.pack(fill="both", expand=True)
+        
+    def remove_camera_tab(self, name):
+        if name in self.discovered_cameras:
+            # Stop stream if running
+            # In a real app we might traverse children and call stop()
+            self.tabs.delete(name)
+            del self.discovered_cameras[name]
+            
+    def on_closing(self):
+        self.zeroconf.close()
+        self.destroy()
 
 if __name__ == "__main__":
     os.environ["PYMOBILEDEVICE3_DISABLE_WARNINGS"] = "1"
-    app = RoflCameraApp()
+    # Create manual instruction if no devices found
+    app = App()
+    
+    # Adding manual override tab just in case auto-discovery fails
+    app.tabs.add("Добавить вручную (IP)")
+    manual_frame = ctk.CTkFrame(app.tabs.tab("Добавить вручную (IP)"))
+    manual_frame.pack(fill="both", expand=True)
+    
+    ctk.CTkLabel(manual_frame, text="Если авто-обнаружение по Wi-Fi не сработало, введите данные ниже:").pack(pady=20)
+    manual_ip = ctk.CTkEntry(manual_frame, placeholder_text="192.168.1.100")
+    manual_ip.pack(pady=10)
+    manual_port = ctk.CTkEntry(manual_frame, placeholder_text="8080")
+    manual_port.pack(pady=10)
+    
+    def connect_manual():
+        n = f"Ручная Камера ({manual_ip.get()})"
+        if n not in app.discovered_cameras:
+            app.add_camera_tab(n, manual_ip.get(), int(manual_port.get() or "8080"))
+            app.tabs.set(n)
+            
+    ctk.CTkButton(manual_frame, text="Добавить эту камеру", command=connect_manual).pack(pady=20)
+    
+    app.protocol("WM_DELETE_WINDOW", app.on_closing)
     app.mainloop()

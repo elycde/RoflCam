@@ -1,15 +1,15 @@
-name: RoflCamera
+name: RoflCam
 options:
   bundleIdPrefix: com.turbi
 targets:
-  RoflCamera:
+  RoflCam:
     type: application
     platform: iOS
     deploymentTarget: "15.0"
     sources:
-      - RoflCamera
+      - RoflCam
     info:
-      path: RoflCamera/Info.plist
+      path: RoflCam/Info.plist
       properties:
         UILaunchStoryboardName: LaunchScreen
         UIApplicationSceneManifest:

@@ -6,6 +6,8 @@
 	<string>Camera access is required for streaming.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Network access is required.</string>
+	<key>CFBundleDisplayName</key>
+	<string>RoflCam</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

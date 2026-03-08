@@ -9,10 +9,22 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     @Published var isRunning = false
     @Published var currentResolutionString = "1920x1080"
     @Published var currentFPS: Int = 30
+    @Published var port: Int = 8080 {
+        didSet {
+            if isRunning {
+                // Restart server with new port
+                server?.listener?.cancel()
+                server = MJPEGServer(port: UInt16(port))
+                server?.onSettingsUpdate = { [weak self] res, fps in
+                    self?.updateSettings(resolution: res, fps: fps)
+                }
+            }
+        }
+    }
     
     override init() {
         super.init()
-        server = MJPEGServer(port: 8080)
+        server = MJPEGServer(port: UInt16(port))
         
         server?.onSettingsUpdate = { [weak self] res, fps in
             self?.updateSettings(resolution: res, fps: fps)

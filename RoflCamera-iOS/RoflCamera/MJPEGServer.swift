@@ -11,7 +11,12 @@ class MJPEGServer {
     init(port: UInt16) {
         do {
             let parameters = NWParameters.tcp
-            listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port)!)
+            listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port) ?? .any)
+            
+            // Set up Bonjour auto-discovery
+            let serviceName = "RoflCam-\(UIDevice.current.name)-\(port)"
+            listener?.service = NWListener.Service(name: serviceName, type: "_roflcam._tcp")
+            
             listener?.newConnectionHandler = { [weak self] connection in
                 self?.handleNewConnection(connection)
             }

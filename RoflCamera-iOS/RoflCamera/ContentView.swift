@@ -46,8 +46,8 @@ struct ContentView: View {
                                 if serverIPs.isEmpty {
                                     Text("Получение IP...")
                                 } else {
-                                    ForEach(serverIPs, id: \\.self) { ip in
-                                        Text("http://\\(ip):8080")
+                                    ForEach(serverIPs, id: \.self) { ip in
+                                        Text("http://\(ip):8080")
                                             .textSelection(.enabled)
                                     }
                                 }
@@ -91,7 +91,7 @@ struct ContentView: View {
                                     .font(.caption)
                                     .foregroundColor(.gray)
                                     .padding(.top, 10)
-                                Text("\\(cameraManager.currentResolutionString) @ \\(cameraManager.currentFPS) FPS")
+                                Text("\(cameraManager.currentResolutionString) @ \(cameraManager.currentFPS) FPS")
                                     .bold()
                             }
                             
@@ -104,7 +104,7 @@ struct ContentView: View {
                                     Text("Разрешение:")
                                     Spacer()
                                     Picker("Разрешение", selection: $cameraManager.currentResolutionString) {
-                                        ForEach(resolutions, id: \\.self) { res in
+                                        ForEach(resolutions, id: \.self) { res in
                                             Text(res).tag(res)
                                         }
                                     }
@@ -115,8 +115,8 @@ struct ContentView: View {
                                     Text("Частота кадров:")
                                     Spacer()
                                     Picker("Частота кадров", selection: $cameraManager.currentFPS) {
-                                        ForEach(fpsList, id: \\.self) { fps in
-                                            Text("\\(fps) FPS").tag(fps)
+                                        ForEach(fpsList, id: \.self) { fps in
+                                            Text("\(fps) FPS").tag(fps)
                                         }
                                     }
                                     .pickerStyle(MenuPickerStyle())

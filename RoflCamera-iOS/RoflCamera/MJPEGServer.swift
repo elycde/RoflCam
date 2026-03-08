@@ -100,7 +100,12 @@ class MJPEGServer {
                     connection.send(content: fullData, completion: .contentProcessed { _ in })
                 }
             }
-            self.connections.removeAll { $0.state == .cancelled || $0.state == .failed }
+            self.connections.removeAll { conn in
+                switch conn.state {
+                case .cancelled, .failed: return true
+                default: return false
+                }
+            }
         }
     }
 }

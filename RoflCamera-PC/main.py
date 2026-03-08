@@ -32,62 +32,63 @@ class StreamingThread(threading.Thread):
         self.update_callback = update_callback
         self.error_callback = error_callback
         self.is_running = True
-        self.cap = None
 
     def run(self):
+        import urllib.request
         time.sleep(0.5)
-        self.cap = cv2.VideoCapture(self.url)
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         
-        if not self.cap.isOpened():
-            self.error_callback("Ошибка: Камера недоступна")
-            self.is_running = False
-            return
-            
         vcam = None
         try:
             vcam = pyvirtualcam.Camera(width=self.width, height=self.height, fps=self.fps)
-            print(f'RoflCam Virtual Cam started: {vcam.device}')
+        except Exception:
+            pass
+            
+        try:
+            stream = urllib.request.urlopen(self.url, timeout=5)
+            bytes_buffer = b''
+            
+            while self.is_running:
+                bytes_buffer += stream.read(8192)
+                a = bytes_buffer.find(b'\xff\xd8')
+                b = bytes_buffer.find(b'\xff\xd9')
+                if a != -1 and b != -1:
+                    jpg = bytes_buffer[a:b+2]
+                    bytes_buffer = bytes_buffer[b+2:]
+                    
+                    frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                    if frame is not None:
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        
+                        if vcam:
+                            try:
+                                h, w, _ = frame_rgb.shape
+                                if w != self.width or h != self.height:
+                                    frame_for_vcam = cv2.resize(frame_rgb, (self.width, self.height))
+                                else:
+                                    frame_for_vcam = frame_rgb
+                                vcam.send(frame_for_vcam)
+                                vcam.sleep_until_next_frame()
+                            except:
+                                pass
+                                
+                        # Обновление UI
+                        try:
+                            # Adaptive scale for UI
+                            h, w, _ = frame_rgb.shape
+                            ui_max_w, ui_max_h = 600, 450
+                            scale = min(ui_max_w / w, ui_max_h / h)
+                            new_w, new_h = int(w * scale), int(h * scale)
+                            frame_resized = cv2.resize(frame_rgb, (new_w, new_h))
+                            
+                            img = Image.fromarray(frame_resized)
+                            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(new_w, new_h))
+                            self.update_callback(ctk_img)
+                        except Exception:
+                            pass
         except Exception as e:
-            print(f"Не удалось запустить виртуальную камеру (pyvirtualcam): {e}")
-            
-        while self.is_running:
-            ret, frame = self.cap.read()
-            if not ret:
-                time.sleep(0.01)
-                continue
-                
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            
-            if vcam:
-                try:
-                    h, w, _ = frame_rgb.shape
-                    if w != self.width or h != self.height:
-                        frame_for_vcam = cv2.resize(frame_rgb, (self.width, self.height))
-                    else:
-                        frame_for_vcam = frame_rgb
-                    vcam.send(frame_for_vcam)
-                    vcam.sleep_until_next_frame()
-                except:
-                    pass
-            
-            # Обновление UI
-            try:
-                h, w, _ = frame_rgb.shape
-                # Adaptive scale for UI
-                ui_max_w, ui_max_h = 600, 450
-                scale = min(ui_max_w / w, ui_max_h / h)
-                new_w, new_h = int(w * scale), int(h * scale)
-                frame_resized = cv2.resize(frame_rgb, (new_w, new_h))
-                
-                img = Image.fromarray(frame_resized)
-                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(new_w, new_h))
-                self.update_callback(ctk_img)
-            except Exception:
-                pass
-                
-        if self.cap:
-            self.cap.release()
+            self.error_callback(f"Ошибка стрима: {str(e)}")
+            self.is_running = False
+
         if vcam:
             vcam.close()
 

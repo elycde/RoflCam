@@ -1,0 +1,27 @@
+name: RoflCamera
+options:
+  bundleIdPrefix: com.turbi
+targets:
+  RoflCamera:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - RoflCamera
+    info:
+      path: RoflCamera/Info.plist
+      properties:
+        UILaunchStoryboardName: LaunchScreen
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        NSCameraUsageDescription: Need camera access to stream video.
+        NSLocalNetworkUsageDescription: Need network access to communicate with PC.
+        UIBackgroundModes:
+          - fetch
+          - processing
+    settings:
+      CODE_SIGN_IDENTITY: ""
+      CODE_SIGNING_REQUIRED: "NO"
+      CODE_SIGNING_ALLOWED: "NO"
+      CODE_SIGN_ENTITLEMENTS: ""
+      ENABLE_USER_SCRIPT_SANDBOXING: "NO"

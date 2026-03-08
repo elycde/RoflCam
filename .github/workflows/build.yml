@@ -1,0 +1,48 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and export IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        working-directory: RoflCamera-iOS
+        run: xcodegen generate
+
+      - name: Build unsigned archive
+        working-directory: RoflCamera-iOS
+        run: |
+          xcodebuild -project RoflCamera.xcodeproj \
+            -scheme RoflCamera  \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath $PWD/build/RoflCamera.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Export Payload to IPA
+        working-directory: RoflCamera-iOS
+        run: |
+          mkdir -p Payload
+          cp -r build/RoflCamera.xcarchive/Products/Applications/RoflCamera.app Payload/
+          zip -qr RoflCamera.ipa Payload
+          
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: RoflCamera
+          path: RoflCamera-iOS/RoflCamera.ipa

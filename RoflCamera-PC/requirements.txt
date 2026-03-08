@@ -1,0 +1,6 @@
+customtkinter>=5.2.1
+pymobiledevice3>=2.36.1
+opencv-python>=4.8.0
+Pillow>=10.0.0
+pyvirtualcam>=0.10.2
+requests>=2.31.0

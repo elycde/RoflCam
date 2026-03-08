@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var isScreenBlackedOut = false
     @State private var previousBrightness: CGFloat = UIScreen.main.brightness
     @State private var autoBlackoutTimer: Timer?
+    @State private var portString: String = "8080"
     
     let resolutions = ["3840x2160", "1920x1080", "1280x720", "640x480"]
     let fpsList = [30, 60, 120]
@@ -24,128 +25,154 @@ struct ContentView: View {
                     }
             } else {
                 VStack {
-                    Spacer()
-                    
-                    VStack(spacing: 20) {
-                        Text("RoflCam")
-                            .font(.largeTitle)
-                            .bold()
-                            .foregroundColor(.white)
-                        
+                    // Top Bar (Native Camera Style)
+                    HStack {
                         if cameraManager.isRunning {
-                            Text("Камера активна 🎥")
-                                .foregroundColor(.green)
-                                .font(.headline)
-                            
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("Wi-Fi IP:")
-                                    .bold()
-                                    .foregroundColor(.white)
-                                if serverIPs.isEmpty {
-                                    Text("Получение IP...")
-                                        .foregroundColor(.gray)
-                                } else {
-                                    ForEach(serverIPs, id: \.self) { ip in
-                                        Text("\(ip):\(cameraManager.port)")
-                                            .foregroundColor(.white)
-                                    }
-                                }
-                                
-                                Text("Параметры трансляции:")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    .padding(.top, 10)
-                                Text("\(cameraManager.currentResolutionString) @ \(cameraManager.currentFPS) FPS")
-                                    .bold()
+                            HStack {
+                                Circle().fill(Color.red).frame(width: 8, height: 8)
+                                Text("LIVE")
+                                    .font(.system(size: 14, weight: .bold))
                                     .foregroundColor(.white)
                             }
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.black.opacity(0.3))
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(Color.black.opacity(0.6))
                             .cornerRadius(10)
                             
-                            Button(action: {
-                                blackoutScreen()
-                            }) {
-                                Text("Спящий режим (сохранить АКБ)")
+                            Spacer()
+                            
+                            if let firstIP = serverIPs.first {
+                                Text("\\(firstIP):\\(portString)")
+                                    .font(.caption2)
                                     .foregroundColor(.white)
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(Color.blue)
+                                    .padding(.horizontal, 10).padding(.vertical, 5)
+                                    .background(Color.black.opacity(0.6))
                                     .cornerRadius(10)
                             }
-                            
-                            Button(action: {
-                                cameraManager.stop()
-                            }) {
-                                Text("Остановить")
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(Color.red)
-                                    .cornerRadius(10)
-                            }
-                            
                         } else {
-                            VStack(alignment: .leading, spacing: 15) {
-                                HStack {
-                                    Text("Порт:")
-                                        .foregroundColor(.white)
-                                    Spacer()
-                                    TextField("8080", value: $cameraManager.port, formatter: NumberFormatter())
-                                        .keyboardType(.numberPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .foregroundColor(.white)
-                                }
-                                
-                                HStack {
-                                    Text("Разрешение:")
-                                        .foregroundColor(.white)
-                                    Spacer()
-                                    Picker("Разрешение", selection: $cameraManager.currentResolutionString) {
-                                        ForEach(resolutions, id: \.self) { res in
-                                            Text(res).tag(res)
+                            Text("RoflCam")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            Spacer()
+                            HStack(spacing: 5) {
+                                Text("ПОРТ:")
+                                    .font(.caption).bold().foregroundColor(.white)
+                                TextField("8080", text: $portString)
+                                    .keyboardType(.numberPad)
+                                    .foregroundColor(.yellow)
+                                    .frame(width: 50)
+                                    .onChange(of: portString) { newValue in
+                                        if let newPort = Int(newValue) {
+                                            cameraManager.port = newPort
+                                            updateIPs()
                                         }
                                     }
-                                    .pickerStyle(MenuPickerStyle())
-                                }
-                                
-                                HStack {
-                                    Text("FPS:")
-                                        .foregroundColor(.white)
-                                    Spacer()
-                                    Picker("Частота кадров", selection: $cameraManager.currentFPS) {
-                                        ForEach(fpsList, id: \.self) { fps in
-                                            Text("\(fps) FPS").tag(fps)
-                                        }
-                                    }
-                                    .pickerStyle(MenuPickerStyle())
-                                }
                             }
-                            .padding()
-                            .background(Color.black.opacity(0.3))
-                            .cornerRadius(10)
-                            
-                            Button(action: {
-                                cameraManager.start()
-                                updateIPs()
-                                startAutoBlackoutTimer()
-                            }) {
-                                Text("Начать трансляцию")
-                                    .foregroundColor(.white)
-                                    .bold()
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(Color.green)
-                                    .cornerRadius(10)
-                            }
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(Color.black.opacity(0.4))
+                            .cornerRadius(8)
                         }
                     }
-                    .padding()
-                    // Liquidglass / Glassmorphism effect overlay for bottom controls
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(20)
-                    .padding()
+                    .padding(.horizontal, 20)
+                    .padding(.top, 40)
+                    
+                    Spacer()
+                    
+                    // Bottom Controls (Native Camera Style)
+                    VStack(spacing: 0) {
+                        // Settings row (Resolution & FPS)
+                        if !cameraManager.isRunning {
+                            HStack(spacing: 20) {
+                                Menu {
+                                    ForEach(resolutions, id: \\.self) { res in
+                                        Button(res) { cameraManager.currentResolutionString = res }
+                                    }
+                                } label: {
+                                    Text(cameraManager.currentResolutionString)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.yellow)
+                                        .padding(.horizontal, 12).padding(.vertical, 6)
+                                        .background(Color.black.opacity(0.6))
+                                        .clipShape(Capsule())
+                                }
+
+                                Menu {
+                                    ForEach(fpsList, id: \\.self) { fps in
+                                        Button("\\(fps) FPS") { cameraManager.currentFPS = fps }
+                                    }
+                                } label: {
+                                    Text("\\(cameraManager.currentFPS) FPS")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.yellow)
+                                        .padding(.horizontal, 12).padding(.vertical, 6)
+                                        .background(Color.black.opacity(0.6))
+                                        .clipShape(Capsule())
+                                }
+                            }
+                            .padding(.bottom, 20)
+                        }
+                        
+                        // Action row (Shutter Button / Action Buttons)
+                        HStack {
+                            if cameraManager.isRunning {
+                                Button(action: blackoutScreen) {
+                                    Image(systemName: "moon.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(.white)
+                                        .frame(width: 60, height: 60)
+                                        .background(Color.blue)
+                                        .clipShape(Circle())
+                                }
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    cameraManager.stop()
+                                }) {
+                                    // Stop recording square inside circle
+                                    ZStack {
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 4)
+                                            .frame(width: 70, height: 70)
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(Color.red)
+                                            .frame(width: 30, height: 30)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                // Placeholder to center the middle button perfectly
+                                Color.clear.frame(width: 60, height: 60)
+                                
+                            } else {
+                                Spacer()
+                                
+                                Button(action: {
+                                    if let p = Int(portString) { cameraManager.port = p }
+                                    cameraManager.start()
+                                    updateIPs()
+                                    startAutoBlackoutTimer()
+                                }) {
+                                    // Start recording red circle
+                                    ZStack {
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 4)
+                                            .frame(width: 70, height: 70)
+                                        Circle()
+                                            .fill(Color.red)
+                                            .frame(width: 58, height: 58)
+                                    }
+                                }
+                                Spacer()
+                            }
+                        }
+                        .padding(.horizontal, 30)
+                        .padding(.bottom, 40)
+                    }
+                    .background(
+                        LinearGradient(gradient: Gradient(colors: [Color.black.opacity(0.0), Color.black.opacity(0.7)]), startPoint: .top, endPoint: .bottom)
+                            .edgesIgnoringSafeArea(.bottom)
+                    )
                 }
                 .onTapGesture {
                     resetAutoBlackoutTimer()
@@ -154,9 +181,10 @@ struct ContentView: View {
         }
         .statusBarHidden(isScreenBlackedOut)
         .onAppear {
+            portString = String(cameraManager.port)
             UIApplication.shared.isIdleTimerDisabled = true
             updateIPs()
-            cameraManager.setupCamera() // Show preview even if not streaming
+            cameraManager.setupCamera()
         }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
@@ -166,6 +194,7 @@ struct ContentView: View {
         }
     }
     
+    // ... [rest of the methods: updateIPs, blackoutScreen, wakeScreen, startAutoBlackoutTimer, resetAutoBlackoutTimer] retained as before ...
     func updateIPs() {
         var addresses: [String] = []
         var ifaddr: UnsafeMutablePointer<ifaddrs>?

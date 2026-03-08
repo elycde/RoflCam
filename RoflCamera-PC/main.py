@@ -23,7 +23,7 @@ class DiscoveredCamera:
         self.stream_state = False
 
 class StreamingThread(threading.Thread):
-    def __init__(self, url, width, height, fps, update_callback, error_callback):
+    def __init__(self, url, width, height, fps, update_callback, error_callback, get_size_callback=None):
         super().__init__(daemon=True)
         self.url = url
         self.width = width
@@ -31,6 +31,7 @@ class StreamingThread(threading.Thread):
         self.fps = fps
         self.update_callback = update_callback
         self.error_callback = error_callback
+        self.get_size_callback = get_size_callback
         self.is_running = True
 
     def run(self):
@@ -73,11 +74,15 @@ class StreamingThread(threading.Thread):
                                 
                         # Обновление UI
                         try:
-                            # Adaptive scale for UI
                             h, w, _ = frame_rgb.shape
-                            ui_max_w, ui_max_h = 600, 450
+                            if self.get_size_callback:
+                                cw, ch = self.get_size_callback()
+                                ui_max_w, ui_max_h = max(100, cw - 20), max(100, ch - 20)
+                            else:
+                                ui_max_w, ui_max_h = 600, 450
+                                
                             scale = min(ui_max_w / w, ui_max_h / h)
-                            new_w, new_h = int(w * scale), int(h * scale)
+                            new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
                             frame_resized = cv2.resize(frame_rgb, (new_w, new_h))
                             
                             img = Image.fromarray(frame_resized)
@@ -138,8 +143,17 @@ class CameraPanel(ctk.CTkFrame):
         self.display_area = ctk.CTkLabel(self, text="Нажмите 'Подключиться' для создания виртуальной RoflCam", fg_color="black", text_color="gray", corner_radius=10)
         self.display_area.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
+        self.current_w = 600
+        self.current_h = 450
+        self.display_area.bind("<Configure>", self.on_display_resize)
+        
         self.status_lbl = ctk.CTkLabel(self, text=f"Доступно по адресу: {camera.url}", text_color="gray")
         self.status_lbl.pack(side="bottom", pady=5)
+        
+    def on_display_resize(self, event):
+        if event.width > 20 and event.height > 20:
+            self.current_w = event.width
+            self.current_h = event.height
         
     def send_settings_to_iphone(self):
         lens_map = {"Осн. камера": "back", "Ширик": "ultrawide", "Фронталка": "front", "Телевик": "telephoto"}
@@ -202,7 +216,8 @@ class CameraPanel(ctk.CTkFrame):
         self.stream_thread = StreamingThread(
             stream_url, w, h, fps, 
             update_callback=self.update_frame, 
-            error_callback=self.handle_error
+            error_callback=self.handle_error,
+            get_size_callback=lambda: (self.current_w, self.current_h)
         )
         self.stream_thread.start()
 
@@ -210,7 +225,9 @@ class CameraPanel(ctk.CTkFrame):
         self.camera.stream_state = False
         self.toggle_btn.configure(text="▶ Подключиться", fg_color="green", hover_color="darkgreen")
         self.status_lbl.configure(text="Отключено", text_color="gray")
-        self.display_area.configure(image="", text="Отключено.")
+        
+        empty_img = ctk.CTkImage(light_image=Image.new("RGB", (1, 1)), size=(1, 1))
+        self.display_area.configure(image=empty_img, text="Отключено.")
         
         if self.stream_thread:
             self.stream_thread.stop()

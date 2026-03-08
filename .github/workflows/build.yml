@@ -24,11 +24,11 @@ jobs:
       - name: Build unsigned archive
         working-directory: RoflCamera-iOS
         run: |
-          xcodebuild -project RoflCamera.xcodeproj \
-            -scheme RoflCamera  \
+          xcodebuild -project RoflCam.xcodeproj \
+            -scheme RoflCam  \
             -configuration Release \
             -destination "generic/platform=iOS" \
-            -archivePath $PWD/build/RoflCamera.xcarchive \
+            -archivePath $PWD/build/RoflCam.xcarchive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -38,11 +38,11 @@ jobs:
         working-directory: RoflCamera-iOS
         run: |
           mkdir -p Payload
-          cp -r build/RoflCamera.xcarchive/Products/Applications/RoflCamera.app Payload/
-          zip -qr RoflCamera.ipa Payload
+          cp -r build/RoflCam.xcarchive/Products/Applications/RoflCam.app Payload/
+          zip -qr RoflCam.ipa Payload
           
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RoflCamera
-          path: RoflCamera-iOS/RoflCamera.ipa
+          name: RoflCam
+          path: RoflCamera-iOS/RoflCam.ipa

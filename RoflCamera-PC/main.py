@@ -48,11 +48,19 @@ class StreamingThread(threading.Thread):
             bytes_buffer = b''
             
             while self.is_running:
-                bytes_buffer += stream.read(8192)
+                bytes_buffer += stream.read(32768)
                 a = bytes_buffer.find(b'\xff\xd8')
                 b = bytes_buffer.find(b'\xff\xd9')
                 if a != -1 and b != -1:
                     jpg = bytes_buffer[a:b+2]
+                    
+                    # If there's another full frame waiting in the buffer, skip this old one
+                    next_a = bytes_buffer.find(b'\xff\xd8', b+2)
+                    if next_a != -1 and bytes_buffer.find(b'\xff\xd9', next_a) != -1:
+                        # Fast-forward to the newest frame to drop latency instantly
+                        bytes_buffer = bytes_buffer[next_a:]
+                        continue
+                        
                     bytes_buffer = bytes_buffer[b+2:]
                     
                     frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)

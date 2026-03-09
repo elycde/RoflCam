@@ -3,6 +3,7 @@ import UIKit
 
 class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession()
+    // iOS 18 Glass Design Update
     var server: MJPEGServer?
     let context = CIContext()
     

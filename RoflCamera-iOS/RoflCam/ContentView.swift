@@ -24,199 +24,198 @@ struct ContentView: View {
                         wakeScreen()
                     }
             } else {
-                VStack {
-                    // Top Bar (Native Camera Style)
-                    HStack {
-                        if cameraManager.isRunning {
-                            HStack {
-                                Circle().fill(Color.red).frame(width: 8, height: 8)
-                                Text("LIVE")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                            .padding(.horizontal, 10).padding(.vertical, 5)
-                            .background(Color.black.opacity(0.6))
-                            .cornerRadius(10)
-                            
-                            Spacer()
-                            
-                            if let firstIP = serverIPs.first {
-                                Text("\(firstIP):\(portString)")
-                                    .font(.caption2)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 10).padding(.vertical, 5)
-                                    .background(Color.black.opacity(0.6))
-                                    .cornerRadius(10)
-                            }
-                        } else {
-                            if let firstIP = serverIPs.first {
-                                Text("\(firstIP):\(portString)")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                            } else {
-                                Text("RoflCam")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                            }
-                            Spacer()
-                            HStack(spacing: 5) {
-                                Text("ПОРТ:")
-                                    .font(.caption).bold().foregroundColor(.white)
-                                TextField("8080", text: $portString)
-                                    .keyboardType(.numberPad)
-                                    .foregroundColor(.yellow)
-                                    .frame(width: 50)
-                                    .onChange(of: portString) { newValue in
-                                        if let newPort = Int(newValue) {
-                                            cameraManager.port = newPort
-                                            updateIPs()
-                                        }
-                                    }
-                            }
-                            .padding(.horizontal, 10).padding(.vertical, 5)
-                            .background(Color.black.opacity(0.4))
-                            .cornerRadius(8)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 40)
-                    
-                    Spacer()
-                    
-                    // Bottom Controls (Native Camera Style)
-                    VStack(spacing: 0) {
-                        // Settings row (Resolution & FPS)
-                        HStack(spacing: 15) {
-                            Menu {
-                                ForEach(["back", "ultrawide", "telephoto", "front"], id: \.self) { lens in
-                                    Button(lens.capitalized) { cameraManager.currentLens = lens }
-                                }
-                            } label: {
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(cameraManager.currentLens == "front" ? .blue : .yellow)
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .background(Color.black.opacity(0.6))
-                                    .clipShape(Capsule())
-                            }
-
-                            Menu {
-                                ForEach(resolutions, id: \.self) { res in
-                                    Button(res) { cameraManager.currentResolutionString = res }
-                                }
-                            } label: {
-                                Text(cameraManager.currentResolutionString)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.yellow)
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .background(Color.black.opacity(0.6))
-                                    .clipShape(Capsule())
-                            }
-
-                            Menu {
-                                ForEach(fpsList, id: \.self) { fps in
-                                    Button("\(fps) FPS") { cameraManager.currentFPS = fps }
-                                }
-                            } label: {
-                                Text("\(cameraManager.currentFPS) FPS")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.yellow)
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .background(Color.black.opacity(0.6))
-                                    .clipShape(Capsule())
-                            }
-                            
-                            Button(action: {
-                                cameraManager.isFlashlightOn.toggle()
-                            }) {
-                                Image(systemName: cameraManager.isFlashlightOn ? "flashlight.on.fill" : "flashlight.off.fill")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(cameraManager.isFlashlightOn ? .white : .yellow)
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .background(cameraManager.isFlashlightOn ? Color.yellow : Color.black.opacity(0.6))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        .padding(.bottom, 20)
-                        
-                        VStack(spacing: 5) {
-                            HStack(spacing: 15) {
-                                Text("🔎")
-                                    .font(.caption2).foregroundColor(.white)
-                                Slider(value: $cameraManager.zoomFactor, in: 1.0...5.0, step: 0.1)
-                                    .accentColor(.yellow)
-                            }
-                            HStack(spacing: 15) {
-                                Text("☀️")
-                                    .font(.caption2).foregroundColor(.white)
-                                Slider(value: $cameraManager.exposureValue, in: -8.0...8.0, step: 0.5)
-                                    .accentColor(.yellow)
-                            }
-                        }.padding(.horizontal, 40).padding(.bottom, 20)
-                        
-                        // Action row (Shutter Button / Action Buttons)
+                    VStack {
+                        // Top Bar (Premium Glass Style)
                         HStack {
                             if cameraManager.isRunning {
-                                Button(action: blackoutScreen) {
-                                    Image(systemName: "moon.fill")
-                                        .font(.system(size: 24))
+                                HStack {
+                                    Circle().fill(Color.red).frame(width: 8, height: 8)
+                                    Text("LIVE")
+                                        .font(.system(size: 14, weight: .bold))
                                         .foregroundColor(.white)
-                                        .frame(width: 60, height: 60)
-                                        .background(Color.blue)
-                                        .clipShape(Circle())
                                 }
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(.ultraThinMaterial)
+                                .glassBackgroundEffect()
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                                 
                                 Spacer()
                                 
-                                Button(action: {
-                                    cameraManager.stop()
-                                }) {
-                                    // Stop recording square inside circle
-                                    ZStack {
-                                        Circle()
-                                            .stroke(Color.white, lineWidth: 4)
-                                            .frame(width: 70, height: 70)
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.red)
-                                            .frame(width: 30, height: 30)
-                                    }
+                                if let firstIP = serverIPs.first {
+                                    Text("\(firstIP):\(portString)")
+                                        .font(.system(.caption2, design: .monospaced))
+                                        .foregroundColor(.white.opacity(0.8))
+                                        .padding(.horizontal, 12).padding(.vertical, 6)
+                                        .background(.ultraThinMaterial)
+                                        .glassBackgroundEffect()
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
                                 }
-                                
-                                Spacer()
-                                
-                                // Placeholder to center the middle button perfectly
-                                Color.clear.frame(width: 60, height: 60)
-                                
                             } else {
+                                Text("RoflCam Pro")
+                                    .font(.system(.title3, design: .rounded).bold())
+                                    .foregroundColor(.white)
                                 Spacer()
-                                
-                                Button(action: {
-                                    if let p = Int(portString) { cameraManager.port = p }
-                                    cameraManager.start()
-                                    updateIPs()
-                                    startAutoBlackoutTimer()
-                                }) {
-                                    // Start recording red circle
-                                    ZStack {
-                                        Circle()
-                                            .stroke(Color.white, lineWidth: 4)
-                                            .frame(width: 70, height: 70)
-                                        Circle()
-                                            .fill(Color.red)
-                                            .frame(width: 58, height: 58)
-                                    }
+                                HStack(spacing: 8) {
+                                    Text("PORT:")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.6))
+                                    TextField("8080", text: $portString)
+                                        .keyboardType(.numberPad)
+                                        .foregroundColor(.yellow)
+                                        .font(.system(.body, design: .monospaced))
+                                        .frame(width: 50)
+                                        .onChange(of: portString) { newValue in
+                                            if let newPort = Int(newValue) {
+                                                cameraManager.port = newPort
+                                                updateIPs()
+                                            }
+                                        }
                                 }
-                                Spacer()
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(.ultraThinMaterial)
+                                .glassBackgroundEffect()
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
                         }
-                        .padding(.horizontal, 30)
-                        .padding(.bottom, 40)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 50)
+                        
+                        Spacer()
+                        
+                        // Bottom Controls
+                        VStack(spacing: 16) {
+                            // Settings row (Glass Capsules)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    Menu {
+                                        ForEach(["back", "ultrawide", "telephoto", "front"], id: \.self) { lens in
+                                            Button(lens.capitalized) { cameraManager.currentLens = lens }
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "camera.fill")
+                                            Text(cameraManager.currentLens == "ultrawide" ? "UW" : cameraManager.currentLens.capitalized)
+                                        }
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(cameraManager.currentLens == "front" ? .blue : .yellow)
+                                        .padding(.horizontal, 12).padding(.vertical, 8)
+                                        .background(.ultraThinMaterial)
+                                        .glassBackgroundEffect()
+                                        .clipShape(Capsule())
+                                    }
+
+                                    Menu {
+                                        ForEach(resolutions, id: \.self) { res in
+                                            Button(res) { cameraManager.currentResolutionString = res }
+                                        }
+                                    } label: {
+                                        Text(cameraManager.currentResolutionString)
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(.ultraThinMaterial)
+                                            .glassBackgroundEffect()
+                                            .clipShape(Capsule())
+                                    }
+
+                                    Menu {
+                                        ForEach(fpsList, id: \.self) { fps in
+                                            Button("\(fps) FPS") { cameraManager.currentFPS = fps }
+                                        }
+                                    } label: {
+                                        Text("\(cameraManager.currentFPS) FPS")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(.ultraThinMaterial)
+                                            .glassBackgroundEffect()
+                                            .clipShape(Capsule())
+                                    }
+                                    
+                                    Button(action: {
+                                        cameraManager.isFlashlightOn.toggle()
+                                    }) {
+                                        Image(systemName: cameraManager.isFlashlightOn ? "flashlight.on.fill" : "flashlight.off.fill")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(cameraManager.isFlashlightOn ? .white : .yellow)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(cameraManager.isFlashlightOn ? Color.yellow.opacity(0.8) : Color.clear)
+                                            .background(.ultraThinMaterial)
+                                            .glassBackgroundEffect()
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                            
+                            // Sliders
+                            VStack(spacing: 12) {
+                                HStack(spacing: 15) {
+                                    Image(systemName: "plus.magnifyingglass")
+                                        .foregroundColor(.white.opacity(0.7))
+                                    Slider(value: $cameraManager.zoomFactor, in: 1.0...10.0, step: 0.1)
+                                        .accentColor(.yellow)
+                                }
+                                HStack(spacing: 15) {
+                                    Image(systemName: "sun.max.fill")
+                                        .foregroundColor(.white.opacity(0.7))
+                                    Slider(value: $cameraManager.exposureValue, in: -8.0...8.0, step: 0.5)
+                                        .accentColor(.yellow)
+                                }
+                            }
+                            .padding(.horizontal, 40)
+                            .padding(.vertical, 20)
+                            .background(.ultraThinMaterial)
+                            .glassBackgroundEffect()
+                            .clipShape(RoundedRectangle(cornerRadius: 30))
+                            .padding(.horizontal, 20)
+                            
+                            // Action Buttons
+                            HStack(spacing: 40) {
+                                if cameraManager.isRunning {
+                                    Button(action: blackoutScreen) {
+                                        ZStack {
+                                            Circle().fill(.ultraThinMaterial).glassBackgroundEffect()
+                                            Image(systemName: "moon.stars.fill")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.white)
+                                        }
+                                        .frame(width: 60, height: 60)
+                                    }
+                                    
+                                    Button(action: {
+                                        cameraManager.stop()
+                                    }) {
+                                        ZStack {
+                                            Circle().fill(.white).frame(width: 80, height: 80)
+                                            Circle().fill(.black).frame(width: 72, height: 72)
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.red)
+                                                .frame(width: 32, height: 32)
+                                        }
+                                    }
+                                    
+                                    // Placeholder
+                                    Color.clear.frame(width: 60, height: 60)
+                                    
+                                } else {
+                                    Button(action: {
+                                        if let p = Int(portString) { cameraManager.port = p }
+                                        cameraManager.start()
+                                        updateIPs()
+                                        startAutoBlackoutTimer()
+                                    }) {
+                                        ZStack {
+                                            Circle().fill(.white).frame(width: 80, height: 80)
+                                            Circle().fill(.black).frame(width: 72, height: 72)
+                                            Circle().fill(.red).frame(width: 60, height: 60)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.bottom, 50)
+                        }
                     }
-                    .background(
-                        LinearGradient(gradient: Gradient(colors: [Color.black.opacity(0.0), Color.black.opacity(0.7)]), startPoint: .top, endPoint: .bottom)
-                            .edgesIgnoringSafeArea(.bottom)
-                    )
-                }
                 .onTapGesture {
                     resetAutoBlackoutTimer()
                 }

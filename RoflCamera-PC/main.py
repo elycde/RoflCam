@@ -344,6 +344,10 @@ class App(ctk.CTk):
         pass
         
     def add_camera_tab(self, name, ip, port):
+        # Check if this IP or Name already exists to prevent duplication
+        for existing_cam in self.discovered_cameras.values():
+            if existing_cam.ip == ip:
+                return
         if name in self.discovered_cameras:
             return
             

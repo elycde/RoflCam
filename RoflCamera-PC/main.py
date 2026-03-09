@@ -77,6 +77,11 @@ class StreamingThread(threading.Thread):
         
         last_processed_jpg = None
         
+        # Orientation stabilizer
+        stable_w, stable_h = 0, 0
+        consensus_count = 0
+        REQUIRED_CONSENSUS = 10 # frames to wait before switching orientation
+        
         try:
             while self.is_running:
                 jpg = self.latest_jpg
@@ -88,32 +93,59 @@ class StreamingThread(threading.Thread):
                 
                 frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
                 if frame is not None:
+                    h, w, _ = frame.shape
+                    
+                    # Update consensus
+                    if w == stable_w and h == stable_h:
+                        consensus_count = 0
+                    else:
+                        consensus_count += 1
+                        if consensus_count > REQUIRED_CONSENSUS or stable_w == 0:
+                            stable_w, stable_h = w, h
+                            consensus_count = 0
+                            
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
                     if vcam:
                         try:
-                            h, w, _ = frame_rgb.shape
                             if w != self.width or h != self.height:
-                                frame_for_vcam = cv2.resize(frame_rgb, (self.width, self.height))
+                                # Always resize to virtual camera's expected size
+                                vcam_frame = cv2.resize(frame_rgb, (self.width, self.height))
                             else:
-                                frame_for_vcam = frame_rgb
-                            vcam.send(frame_for_vcam)
-                            # Removed vcam.sleep_until_next_frame() to eliminate network backpressure delay!
+                                vcam_frame = frame_rgb
+                            vcam.send(vcam_frame)
                         except:
                             pass
                             
-                    # Обновление UI
+                    # Update UI with Letterboxing to prevent jumpy layout
                     try:
-                        # Use fixed bounding box for UI to prevent window-resizing feedback loop
-                        h, w, _ = frame_rgb.shape
                         ui_max_w, ui_max_h = 800, 600
-                            
-                        scale = min(ui_max_w / w, ui_max_h / h)
-                        new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
-                        frame_resized = cv2.resize(frame_rgb, (new_w, new_h))
                         
-                        img = Image.fromarray(frame_resized)
-                        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(new_w, new_h))
+                        # Use stable dimensions for the container size
+                        # If the current frame matches stable, perfect. 
+                        # If not (during transition), we letterbox it into the stable aspect ratio.
+                        
+                        # 1. Determine the 'target' aspect ratio from stable dimensions
+                        # 2. Rescale the frame to fit within ui_max_w/h while maintaining aspect ratio
+                        scale = min(ui_max_w / stable_w, ui_max_h / stable_h)
+                        view_w, view_h = max(1, int(stable_w * scale)), max(1, int(stable_h * scale))
+                        
+                        # 3. Process current frame to fit exactly into view_w, view_h
+                        # If it's flickering, we'll letterbox it so it doesn't jump
+                        curr_h, curr_w, _ = frame_rgb.shape
+                        curr_scale = min(view_w / curr_w, view_h / curr_h)
+                        temp_w, temp_h = max(1, int(curr_w * curr_scale)), max(1, int(curr_h * curr_scale))
+                        
+                        frame_resized = cv2.resize(frame_rgb, (temp_w, temp_h))
+                        
+                        # Create black canvas of view_w x view_h
+                        canvas = np.zeros((view_h, view_w, 3), dtype=np.uint8)
+                        y_off = (view_h - temp_h) // 2
+                        x_off = (view_w - temp_w) // 2
+                        canvas[y_off:y_off+temp_h, x_off:x_off+temp_w] = frame_resized
+                        
+                        img = Image.fromarray(canvas)
+                        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(view_w, view_h))
                         self.update_callback(ctk_img)
                     except Exception:
                         pass

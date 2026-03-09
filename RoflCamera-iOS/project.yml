@@ -21,6 +21,9 @@ targets:
         UIBackgroundModes:
           - fetch
           - processing
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationLandscapeLeft
     settings:
       CODE_SIGN_IDENTITY: ""
       CODE_SIGNING_REQUIRED: "NO"

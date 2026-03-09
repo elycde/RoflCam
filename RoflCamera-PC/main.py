@@ -78,9 +78,9 @@ class StreamingThread(threading.Thread):
         last_processed_jpg = None
         
         # Orientation stabilizer
-        stable_w, stable_h = 0, 0
+        stable_w, stable_h = 1920, 1080 # Start with assumption
+        REQUIRED_CONSENSUS = 45 # wait ~1.5 seconds of consistent mismatch before switching
         consensus_count = 0
-        REQUIRED_CONSENSUS = 10 # frames to wait before switching orientation
         
         try:
             while self.is_running:
@@ -93,14 +93,18 @@ class StreamingThread(threading.Thread):
                 
                 frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
                 if frame is not None:
+                    # FIX: Force Landscape. If height > width, rotate the frame.
                     h, w, _ = frame.shape
+                    if h > w:
+                        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                        h, w = w, h
                     
-                    # Update consensus
+                    # Update consensus for window resizing (only resize if truly changed for a while)
                     if w == stable_w and h == stable_h:
                         consensus_count = 0
                     else:
                         consensus_count += 1
-                        if consensus_count > REQUIRED_CONSENSUS or stable_w == 0:
+                        if consensus_count > REQUIRED_CONSENSUS:
                             stable_w, stable_h = w, h
                             consensus_count = 0
                             
@@ -108,8 +112,8 @@ class StreamingThread(threading.Thread):
                     
                     if vcam:
                         try:
+                            # Virtual camera is always landscape
                             if w != self.width or h != self.height:
-                                # Always resize to virtual camera's expected size
                                 vcam_frame = cv2.resize(frame_rgb, (self.width, self.height))
                             else:
                                 vcam_frame = frame_rgb
@@ -117,28 +121,23 @@ class StreamingThread(threading.Thread):
                         except:
                             pass
                             
-                    # Update UI with Letterboxing to prevent jumpy layout
+                    # Update UI with Letterboxing and Fixed Container size
                     try:
+                        # UI window target size
                         ui_max_w, ui_max_h = 800, 600
                         
-                        # Use stable dimensions for the container size
-                        # If the current frame matches stable, perfect. 
-                        # If not (during transition), we letterbox it into the stable aspect ratio.
-                        
-                        # 1. Determine the 'target' aspect ratio from stable dimensions
-                        # 2. Rescale the frame to fit within ui_max_w/h while maintaining aspect ratio
+                        # Use stable aspect ratio to define the 'window' space
                         scale = min(ui_max_w / stable_w, ui_max_h / stable_h)
                         view_w, view_h = max(1, int(stable_w * scale)), max(1, int(stable_h * scale))
                         
-                        # 3. Process current frame to fit exactly into view_w, view_h
-                        # If it's flickering, we'll letterbox it so it doesn't jump
+                        # Process current frame (which is already landscape-forced)
                         curr_h, curr_w, _ = frame_rgb.shape
                         curr_scale = min(view_w / curr_w, view_h / curr_h)
                         temp_w, temp_h = max(1, int(curr_w * curr_scale)), max(1, int(curr_h * curr_scale))
                         
                         frame_resized = cv2.resize(frame_rgb, (temp_w, temp_h))
                         
-                        # Create black canvas of view_w x view_h
+                        # Create black canvas to letterbox during transition
                         canvas = np.zeros((view_h, view_w, 3), dtype=np.uint8)
                         y_off = (view_h - temp_h) // 2
                         x_off = (view_w - temp_w) // 2

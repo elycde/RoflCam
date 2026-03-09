@@ -234,6 +234,7 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
         }
         
         if let connection = output.connection(with: .video) {
+            // FORCE LandscapeRight for the MJPEG stream
             if #available(iOS 17.0, *) {
                 connection.videoRotationAngle = 90
             } else {

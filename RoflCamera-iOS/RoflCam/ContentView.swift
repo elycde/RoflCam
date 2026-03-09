@@ -24,72 +24,78 @@ struct ContentView: View {
                         wakeScreen()
                     }
             } else {
+                // UI Geometry Stabilizer
+                GeometryReader { geo in
                     VStack {
                         // Top Bar (Liquid Glass Pro)
                         HStack {
                             if cameraManager.isRunning {
                                 HStack(spacing: 8) {
                                     Circle().fill(Color.red)
-                                        .frame(width: 6, height: 6)
-                                        .shadow(color: .red, radius: 4)
+                                        .frame(width: 8, height: 8)
+                                        .shadow(color: .red, radius: 6)
                                     Text("LIVE")
-                                        .font(.system(size: 12, weight: .black, design: .rounded))
+                                        .font(.system(size: 14, weight: .black, design: .rounded))
                                         .foregroundColor(.white)
                                 }
-                                .padding(.horizontal, 14).padding(.vertical, 8)
+                                .padding(.horizontal, 16).padding(.vertical, 10)
                                 .glassEffect()
                                 
                                 Spacer()
                                 
                                 if let firstIP = serverIPs.first {
                                     Text("\(firstIP):\(portString)")
-                                        .font(.system(.caption2, design: .monospaced))
-                                        .foregroundColor(.white.opacity(0.9))
-                                        .padding(.horizontal, 14).padding(.vertical, 8)
+                                        .font(.system(.caption2, design: .monospaced).weight(.bold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 16).padding(.vertical, 10)
                                         .glassEffect()
                                 }
                             } else {
                                 Text("RoflCam")
                                     .font(.system(.title2, design: .rounded).weight(.heavy))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(
+                                        LinearGradient(colors: [.white, .white.opacity(0.8)], startPoint: .top, endPoint: .bottom)
+                                    )
                                     .shadow(color: .black.opacity(0.3), radius: 10)
+                                    
                                 Spacer()
+                                
                                 HStack(spacing: 8) {
                                     Text("PORT")
-                                        .font(.system(size: 8, weight: .bold))
-                                        .foregroundColor(.white.opacity(0.5))
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.6))
                                     TextField("8080", text: $portString)
                                         .keyboardType(.numberPad)
                                         .foregroundColor(.yellow)
-                                        .font(.system(.body, design: .monospaced))
-                                        .frame(width: 45)
+                                        .font(.system(.body, design: .monospaced).weight(.bold))
+                                        .frame(width: 50)
                                 }
-                                .padding(.horizontal, 14).padding(.vertical, 10)
+                                .padding(.horizontal, 16).padding(.vertical, 12)
                                 .glassEffect()
                             }
                         }
-                        .padding(.horizontal, 25)
+                        .padding(.horizontal, 30)
                         .padding(.top, 60)
                         
                         Spacer()
                         
                         // Main Control Surface
-                        VStack(spacing: 20) {
+                        VStack(spacing: 25) {
                             // Floating Lens & FPS Bar
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
+                                HStack(spacing: 15) {
                                     Menu {
                                         ForEach(["back", "ultrawide", "telephoto", "front"], id: \.self) { lens in
                                             Button(lens.capitalized) { cameraManager.currentLens = lens }
                                         }
                                     } label: {
-                                        HStack {
-                                            Image(systemName: "camera.aperture")
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "camera.filters")
                                             Text(cameraManager.currentLens.capitalized)
                                         }
-                                        .font(.system(size: 13, weight: .bold))
-                                        .foregroundColor(cameraManager.currentLens == "front" ? .blue : .yellow)
-                                        .padding(.horizontal, 16).padding(.vertical, 12)
+                                        .font(.system(size: 14, weight: .heavy))
+                                        .foregroundColor(cameraManager.currentLens == "front" ? .cyan : .yellow)
+                                        .padding(.horizontal, 18).padding(.vertical, 14)
                                         .glassEffect()
                                     }
 
@@ -99,9 +105,9 @@ struct ContentView: View {
                                         }
                                     } label: {
                                         Text(cameraManager.currentResolutionString)
-                                            .font(.system(size: 13, weight: .bold))
+                                            .font(.system(size: 14, weight: .heavy))
                                             .foregroundColor(.white)
-                                            .padding(.horizontal, 16).padding(.vertical, 12)
+                                            .padding(.horizontal, 18).padding(.vertical, 14)
                                             .glassEffect()
                                     }
 
@@ -111,69 +117,47 @@ struct ContentView: View {
                                         }
                                     } label: {
                                         Text("\(cameraManager.currentFPS) FPS")
-                                            .font(.system(size: 13, weight: .bold))
+                                            .font(.system(size: 14, weight: .heavy))
                                             .foregroundColor(.white)
-                                            .padding(.horizontal, 16).padding(.vertical, 12)
+                                            .padding(.horizontal, 18).padding(.vertical, 14)
                                             .glassEffect()
                                     }
                                 }
-                                .padding(.horizontal, 25)
+                                .padding(.horizontal, 30)
                             }
                             
                             // Interactive Liquid Sliders
-                            VStack(spacing: 15) {
-                                HStack(spacing: 20) {
-                                    Image(systemName: "magnifyingglass")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.white.opacity(0.6))
-                                    Slider(value: $cameraManager.zoomFactor, in: 1.0...10.0, step: 0.1)
-                                        .tint(.yellow)
-                                }
-                                HStack(spacing: 20) {
-                                    Image(systemName: "sun.max.fill")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.white.opacity(0.6))
-                                    Slider(value: $cameraManager.exposureValue, in: -8.0...8.0, step: 0.5)
-                                        .tint(.yellow)
-                                }
+                            VStack(spacing: 20) {
+                                ControlSlider(icon: "magnifyingglass", value: $cameraManager.zoomFactor, range: 1.0...10.0)
+                                ControlSlider(icon: "sun.max.fill", value: $cameraManager.exposureValue, range: -8.0...8.0)
                             }
                             .padding(25)
                             .glassEffect()
-                            .padding(.horizontal, 25)
+                            .padding(.horizontal, 30)
                             
                             // Liquid Action Group
-                            HStack(spacing: 50) {
+                            HStack(spacing: 40) {
                                 if cameraManager.isRunning {
-                                    Button(action: blackoutScreen) {
-                                        Image(systemName: "moon.fill")
-                                            .font(.system(size: 22))
-                                            .foregroundColor(.white)
-                                            .frame(width: 65, height: 65)
-                                            .glassEffect()
-                                    }
+                                    ControlButton(icon: "moon.fill", active: false) { blackoutScreen() }
                                     
-                                    Button(action: {
-                                        cameraManager.stop()
-                                    }) {
+                                    Button(action: { cameraManager.stop() }) {
                                         ZStack {
-                                            Circle().fill(.white.opacity(0.2)).frame(width: 90, height: 90).glassEffect()
+                                            Circle()
+                                                .fill(.ultraThinMaterial)
+                                                .frame(width: 85, height: 85)
+                                                .overlay(Circle().stroke(.white.opacity(0.2), lineWidth: 0.5))
+                                            
                                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                                 .fill(Color.red)
-                                                .frame(width: 35, height: 35)
-                                                .shadow(color: .red.opacity(0.5), radius: 15)
+                                                .frame(width: 32, height: 32)
+                                                .shadow(color: .red.opacity(0.4), radius: 10)
                                         }
                                     }
                                     .buttonStyle(.plain)
                                     
-                                    Button(action: {
+                                    ControlButton(icon: cameraManager.isFlashlightOn ? "flashlight.on.fill" : "flashlight.off.fill", 
+                                                 active: cameraManager.isFlashlightOn) {
                                         cameraManager.isFlashlightOn.toggle()
-                                    }) {
-                                        Image(systemName: cameraManager.isFlashlightOn ? "flashlight.on.fill" : "flashlight.off.fill")
-                                            .font(.system(size: 22))
-                                            .foregroundColor(cameraManager.isFlashlightOn ? .white : .yellow)
-                                            .frame(width: 65, height: 65)
-                                            .background(cameraManager.isFlashlightOn ? Color.yellow.opacity(0.3) : Color.clear)
-                                            .glassEffect()
                                     }
                                     
                                 } else {
@@ -184,11 +168,20 @@ struct ContentView: View {
                                         startAutoBlackoutTimer()
                                     }) {
                                         ZStack {
-                                            Circle().fill(.white.opacity(0.2)).frame(width: 90, height: 90).glassEffect()
+                                            Circle()
+                                                .fill(.ultraThinMaterial)
+                                                .frame(width: 100, height: 100)
+                                                .overlay(Circle().stroke(.white.opacity(0.3), lineWidth: 1))
+                                            
                                             Circle()
                                                 .fill(Color.red)
-                                                .frame(width: 70, height: 70)
-                                                .shadow(color: .red.opacity(0.5), radius: 20)
+                                                .frame(width: 75, height: 75)
+                                                .shadow(color: .red.opacity(0.6), radius: 25)
+                                                .overlay(
+                                                    Circle()
+                                                        .stroke(.white.opacity(0.4), lineWidth: 0.5)
+                                                        .padding(2)
+                                                )
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -197,6 +190,11 @@ struct ContentView: View {
                             .padding(.bottom, 60)
                         }
                     }
+                    .frame(width: geo.size.width, height: geo.size.height)
+                }
+                .onTapGesture {
+                    resetAutoBlackoutTimer()
+                }
                 .onTapGesture {
                     resetAutoBlackoutTimer()
                 }
@@ -273,78 +271,90 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Liquid Glass Bridge (iOS 26.3 Design Language)
-// This bridge implements the "Liquid Glass" design language modifiers 
-// that allow for morphing, refractive glass effects, and liquid interactions.
+// MARK: - Liquid Components
+struct ControlSlider: View {
+    let icon: String
+    @Binding var value: Float
+    var range: ClosedRange<Float>
+    
+    var body: some View {
+        HStack(spacing: 20) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white.opacity(0.8))
+            Slider(value: $value, in: range)
+                .tint(.yellow)
+        }
+    }
+}
 
+struct ControlSliderCG: View {
+    let icon: String
+    @Binding var value: CGFloat
+    var range: ClosedRange<CGFloat>
+    
+    var body: some View {
+        HStack(spacing: 20) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white.opacity(0.8))
+            Slider(value: $value, in: range)
+                .tint(.yellow)
+        }
+    }
+}
+
+struct ControlButton: View {
+    let icon: String
+    let active: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(active ? .yellow : .white)
+                .frame(width: 70, height: 70)
+                .background(active ? Color.yellow.opacity(0.15) : Color.clear)
+                .glassEffect()
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Liquid Glass Bridge (iOS 18 Native Materials)
 struct LiquidGlassModifier: ViewModifier {
     var material: Material
     var shape: AnyShape
     
     func body(content: Content) -> some View {
         content
-            .background {
-                // In iOS 18+, we use the native glassBackgroundEffect as the foundation
-                // then overlay the "Liquid" highlights and shadows.
-                ZStack {
-                    // Using Material as the base for glass on iOS 
-                    // and adding custom liquid layers for the iOS 26.3 aesthetic.
-                    shape.fill(.ultraThinMaterial)
-                        .opacity(0.95)
-                    
-                    // Liquid Highlight (Upper edge glow)
-                    shape
-                        .stroke(
-                            LinearGradient(
-                                colors: [.white.opacity(0.5), .white.opacity(0.2), .clear],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 0.6
-                        )
-                    
-                    // Liquid Refraction (Inner soft glow)
-                    shape
-                        .fill(RadialGradient(
-                            colors: [.white.opacity(0.1), .clear],
-                            center: .topLeading,
-                            startRadius: 0,
-                            endRadius: 80
-                        ))
-                }
-            }
-            // Liquid depth shadow
-            .shadow(color: .black.opacity(0.25), radius: 15, x: 0, y: 8)
-            .compositingGroup()
+            .background(.ultraThinMaterial, in: shape)
+            .overlay(
+                shape.stroke(.white.opacity(0.15), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 10)
     }
 }
 
 extension View {
-    /// Applies the Liquid Glass design effect introduced in iOS 26.3.
-    /// Morphing and refraction are automatically calculated based on the context.
-    func glassEffect(_ material: Material = .regular, in shape: some Shape = .rect) -> some View {
+    func glassEffect(_ material: Material = .thin, in shape: some Shape = RoundedRectangle(cornerRadius: 24, style: .continuous)) -> some View {
         self.modifier(LiquidGlassModifier(material: material, shape: AnyShape(shape)))
     }
     
-    /// Experimental: Adds a liquid refraction light effect based on view geometry.
-    func refraction(intensity: Double = 1.0) -> some View {
-        self.overlay(
-            Circle()
-                .fill(.white.opacity(0.03 * intensity))
-                .blur(radius: 20)
-                .offset(x: -20, y: -20)
-                .blendMode(.plusLighter)
-        )
+    // UI Helpers
+    func ControlSlider(icon: String, value: Binding<CGFloat>, range: ClosedRange<CGFloat>) -> some View {
+        ControlSliderCG(icon: icon, value: value, range: range)
+    }
+    
+    func ControlSlider(icon: String, value: Binding<Float>, range: ClosedRange<Float>) -> some View {
+        ControlSlider(icon: icon, value: value, range: range)
     }
 }
 
-/// A container that enables morphing between Liquid Glass components.
 struct GlassEffectContainer<Content: View>: View {
     @ViewBuilder var content: Content
-    
     var body: some View {
-        ZStack {
-            content
-        }
+        ZStack { content }
     }
 }

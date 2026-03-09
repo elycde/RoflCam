@@ -193,9 +193,16 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
             
             if let output = session.outputs.first as? AVCaptureVideoDataOutput,
                let connection = output.connection(with: .video) {
-                if connection.isVideoOrientationSupported {
-                    connection.videoOrientation = .landscapeRight
+                if #available(iOS 17.0, *) {
+                    if connection.isVideoRotationAngleSupported(90) { // Landscape Right
+                        connection.videoRotationAngle = 90
+                    }
+                } else {
+                    if connection.isVideoOrientationSupported {
+                        connection.videoOrientation = .landscapeRight
+                    }
                 }
+                
                 if connection.isVideoMirroringSupported {
                     connection.isVideoMirrored = (self.currentLens == "front")
                 }
@@ -227,7 +234,11 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
         }
         
         if let connection = output.connection(with: .video) {
-            connection.videoOrientation = .landscapeRight
+            if #available(iOS 17.0, *) {
+                connection.videoRotationAngle = 90
+            } else {
+                connection.videoOrientation = .landscapeRight
+            }
         }
         
         session.commitConfiguration()

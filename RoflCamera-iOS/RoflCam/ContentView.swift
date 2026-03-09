@@ -288,9 +288,9 @@ struct LiquidGlassModifier: ViewModifier {
                 // then overlay the "Liquid" highlights and shadows.
                 ZStack {
                     if #available(iOS 18.0, *) {
-                        Rectangle()
-                            .fill(.clear)
-                            .glassBackgroundEffect(in: shape)
+                        Color.clear
+                            .glassBackgroundEffect()
+                            .clipShape(shape)
                     } else {
                         shape.fill(.ultraThinMaterial)
                     }

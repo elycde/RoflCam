@@ -30,15 +30,28 @@ struct CameraPreviewView: UIViewRepresentable {
                 // Adjust for rotation
                 if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                     let interfaceOrientation = windowScene.interfaceOrientation
-                    switch interfaceOrientation {
-                    case .landscapeLeft:
-                        previewLayer.connection?.videoOrientation = .landscapeLeft
-                    case .landscapeRight:
-                        previewLayer.connection?.videoOrientation = .landscapeRight
-                    case .portraitUpsideDown:
-                        previewLayer.connection?.videoOrientation = .portraitUpsideDown
-                    default:
-                        previewLayer.connection?.videoOrientation = .portrait
+                    
+                    if #available(iOS 17.0, *) {
+                        let angle: Double = {
+                            switch interfaceOrientation {
+                            case .landscapeLeft: return 180
+                            case .landscapeRight: return 0
+                            case .portraitUpsideDown: return 270
+                            default: return 90 // portrait
+                            }
+                        }()
+                        previewLayer.connection?.videoRotationAngle = angle
+                    } else {
+                        switch interfaceOrientation {
+                        case .landscapeLeft:
+                            previewLayer.connection?.videoOrientation = .landscapeLeft
+                        case .landscapeRight:
+                            previewLayer.connection?.videoOrientation = .landscapeRight
+                        case .portraitUpsideDown:
+                            previewLayer.connection?.videoOrientation = .portraitUpsideDown
+                        default:
+                            previewLayer.connection?.videoOrientation = .portrait
+                        }
                     }
                 }
             }

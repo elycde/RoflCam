@@ -128,8 +128,8 @@ struct ContentView: View {
                             
                             // Interactive Liquid Sliders
                             VStack(spacing: 20) {
-                                ControlSliderGeneric(icon: "magnifyingglass", value: $cameraManager.zoomFactor, range: 1.0...10.0)
-                                ControlSliderGeneric(icon: "sun.max.fill", value: $cameraManager.exposureValue, range: -8.0...8.0)
+                                ControlSliderFloat(icon: "magnifyingglass", value: $cameraManager.zoomFactor, range: 1.0...10.0)
+                                ControlSliderFloat(icon: "sun.max.fill", value: $cameraManager.exposureValue, range: -8.0...8.0)
                             }
                             .padding(25)
                             .glassEffect()
@@ -272,10 +272,26 @@ struct ContentView: View {
 }
 
 // MARK: - Liquid Components
-struct ControlSliderGeneric<T: BinaryFloatingPoint>: View where T.Stride: Float80 {
+struct ControlSliderFloat: View {
     let icon: String
-    @Binding var value: T
-    var range: ClosedRange<T>
+    @Binding var value: Float
+    var range: ClosedRange<Float>
+    
+    var body: some View {
+        HStack(spacing: 20) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white.opacity(0.8))
+            Slider(value: $value, in: range)
+                .tint(.yellow)
+        }
+    }
+}
+
+struct ControlSliderCGFloat: View {
+    let icon: String
+    @Binding var value: CGFloat
+    var range: ClosedRange<CGFloat>
     
     var body: some View {
         HStack(spacing: 20) {

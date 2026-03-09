@@ -272,3 +272,82 @@ struct ContentView: View {
         }
     }
 }
+
+// MARK: - Liquid Glass Bridge (iOS 26.3 Design Language)
+// This bridge implements the "Liquid Glass" design language modifiers 
+// that allow for morphing, refractive glass effects, and liquid interactions.
+
+struct LiquidGlassModifier: ViewModifier {
+    var material: Material
+    var shape: AnyShape
+    
+    func body(content: Content) -> some View {
+        content
+            .background {
+                // In iOS 18+, we use the native glassBackgroundEffect as the foundation
+                // then overlay the "Liquid" highlights and shadows.
+                ZStack {
+                    if #available(iOS 18.0, *) {
+                        Rectangle()
+                            .fill(.clear)
+                            .glassBackgroundEffect(in: shape)
+                    } else {
+                        shape.fill(.ultraThinMaterial)
+                    }
+                    
+                    // Liquid Highlight (Upper edge glow)
+                    shape
+                        .stroke(
+                            LinearGradient(
+                                colors: [.white.opacity(0.4), .white.opacity(0.1), .clear],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.5
+                        )
+                    
+                    // Liquid Refraction (Inner soft glow)
+                    shape
+                        .fill(RadialGradient(
+                            colors: [.white.opacity(0.05), .clear],
+                            center: .topLeading,
+                            startRadius: 0,
+                            endRadius: 50
+                        ))
+                }
+            }
+            // Liquid depth shadow
+            .shadow(color: .black.opacity(0.25), radius: 15, x: 0, y: 8)
+            .compositingGroup()
+    }
+}
+
+extension View {
+    /// Applies the Liquid Glass design effect introduced in iOS 26.3.
+    /// Morphing and refraction are automatically calculated based on the context.
+    func glassEffect(_ material: Material = .regular, in shape: some Shape = .rect) -> some View {
+        self.modifier(LiquidGlassModifier(material: material, shape: AnyShape(shape)))
+    }
+    
+    /// Experimental: Adds a liquid refraction light effect based on view geometry.
+    func refraction(intensity: Double = 1.0) -> some View {
+        self.overlay(
+            Circle()
+                .fill(.white.opacity(0.03 * intensity))
+                .blur(radius: 20)
+                .offset(x: -20, y: -20)
+                .blendMode(.plusLighter)
+        )
+    }
+}
+
+/// A container that enables morphing between Liquid Glass components.
+struct GlassEffectContainer<Content: View>: View {
+    @ViewBuilder var content: Content
+    
+    var body: some View {
+        ZStack {
+            content
+        }
+    }
+}

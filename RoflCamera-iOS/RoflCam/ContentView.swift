@@ -128,8 +128,8 @@ struct ContentView: View {
                             
                             // Interactive Liquid Sliders
                             VStack(spacing: 20) {
-                                ControlSlider(icon: "magnifyingglass", value: $cameraManager.zoomFactor, range: 1.0...10.0)
-                                ControlSlider(icon: "sun.max.fill", value: $cameraManager.exposureValue, range: -8.0...8.0)
+                                ControlSliderGeneric(icon: "magnifyingglass", value: $cameraManager.zoomFactor, range: 1.0...10.0)
+                                ControlSliderGeneric(icon: "sun.max.fill", value: $cameraManager.exposureValue, range: -8.0...8.0)
                             }
                             .padding(25)
                             .glassEffect()
@@ -272,26 +272,10 @@ struct ContentView: View {
 }
 
 // MARK: - Liquid Components
-struct ControlSlider: View {
+struct ControlSliderGeneric<T: BinaryFloatingPoint>: View where T.Stride: Float80 {
     let icon: String
-    @Binding var value: Float
-    var range: ClosedRange<Float>
-    
-    var body: some View {
-        HStack(spacing: 20) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.white.opacity(0.8))
-            Slider(value: $value, in: range)
-                .tint(.yellow)
-        }
-    }
-}
-
-struct ControlSliderCG: View {
-    let icon: String
-    @Binding var value: CGFloat
-    var range: ClosedRange<CGFloat>
+    @Binding var value: T
+    var range: ClosedRange<T>
     
     var body: some View {
         HStack(spacing: 20) {
@@ -322,33 +306,44 @@ struct ControlButton: View {
     }
 }
 
-// MARK: - Liquid Glass Bridge (iOS 18 Native Materials)
+// MARK: - Liquid Glass Bridge (iOS 18 Native Mesh & Materials)
 struct LiquidGlassModifier: ViewModifier {
     var material: Material
     var shape: AnyShape
     
     func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial, in: shape)
+            .background {
+                ZStack {
+                    // Liquid: Native iOS 18 MeshGradient for the 'moving liquid' feel
+                    if #available(iOS 18.0, *) {
+                        MeshGradient(width: 3, height: 3, points: [
+                            [0, 0], [0.5, 0], [1, 0],
+                            [0, 0.5], [0.5, 0.5], [1, 0.5],
+                            [0, 1], [0.5, 1], [1, 1]
+                        ], colors: [
+                            .black.opacity(0.2), .black.opacity(0.1), .black.opacity(0.2),
+                            .white.opacity(0.05), .clear, .white.opacity(0.05),
+                            .black.opacity(0.2), .black.opacity(0.1), .black.opacity(0.2)
+                        ])
+                        .blur(radius: 20)
+                    }
+                    
+                    // Glass: Native iOS 18 Material
+                    shape.fill(.ultraThinMaterial)
+                }
+            }
+            .clipShape(shape)
             .overlay(
                 shape.stroke(.white.opacity(0.15), lineWidth: 0.5)
             )
-            .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 10)
+            .shadow(color: .black.opacity(0.25), radius: 15, x: 0, y: 10)
     }
 }
 
 extension View {
     func glassEffect(_ material: Material = .thin, in shape: some Shape = RoundedRectangle(cornerRadius: 24, style: .continuous)) -> some View {
         self.modifier(LiquidGlassModifier(material: material, shape: AnyShape(shape)))
-    }
-    
-    // UI Helpers
-    func ControlSlider(icon: String, value: Binding<CGFloat>, range: ClosedRange<CGFloat>) -> some View {
-        ControlSliderCG(icon: icon, value: value, range: range)
-    }
-    
-    func ControlSlider(icon: String, value: Binding<Float>, range: ClosedRange<Float>) -> some View {
-        ControlSlider(icon: icon, value: value, range: range)
     }
 }
 

@@ -77,10 +77,8 @@ class StreamingThread(threading.Thread):
         
         last_processed_jpg = None
         
-        # Orientation stabilizer
-        stable_w, stable_h = 1920, 1080 # Start with assumption
-        REQUIRED_CONSENSUS = 45 # wait ~1.5 seconds of consistent mismatch before switching
-        consensus_count = 0
+        # Fixed Target for UI to prevent window resizing feedback
+        UI_WIDTH, UI_HEIGHT = 800, 450 # Strict 16:9 for the UI container
         
         try:
             while self.is_running:
@@ -93,26 +91,18 @@ class StreamingThread(threading.Thread):
                 
                 frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
                 if frame is not None:
-                    # FIX: Force Landscape. If height > width, rotate the frame.
                     h, w, _ = frame.shape
+                    
+                    # FORCE LANDSCAPE: If vertical, rotate immediately
                     if h > w:
                         frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
                         h, w = w, h
                     
-                    # Update consensus for window resizing (only resize if truly changed for a while)
-                    if w == stable_w and h == stable_h:
-                        consensus_count = 0
-                    else:
-                        consensus_count += 1
-                        if consensus_count > REQUIRED_CONSENSUS:
-                            stable_w, stable_h = w, h
-                            consensus_count = 0
-                            
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
                     if vcam:
                         try:
-                            # Virtual camera is always landscape
+                            # Virtual camera uses fixed settings
                             if w != self.width or h != self.height:
                                 vcam_frame = cv2.resize(frame_rgb, (self.width, self.height))
                             else:
@@ -121,30 +111,22 @@ class StreamingThread(threading.Thread):
                         except:
                             pass
                             
-                    # Update UI with Letterboxing and Fixed Container size
+                    # Update UI - Fixed Size Container (No resizing!)
                     try:
-                        # UI window target size
-                        ui_max_w, ui_max_h = 800, 600
-                        
-                        # Use stable aspect ratio to define the 'window' space
-                        scale = min(ui_max_w / stable_w, ui_max_h / stable_h)
-                        view_w, view_h = max(1, int(stable_w * scale)), max(1, int(stable_h * scale))
-                        
-                        # Process current frame (which is already landscape-forced)
-                        curr_h, curr_w, _ = frame_rgb.shape
-                        curr_scale = min(view_w / curr_w, view_h / curr_h)
-                        temp_w, temp_h = max(1, int(curr_w * curr_scale)), max(1, int(curr_h * curr_scale))
-                        
+                        # Rescale frame to fit the FIXED UI container
+                        scale = min(UI_WIDTH / w, UI_HEIGHT / h)
+                        temp_w, temp_h = max(1, int(w * scale)), max(1, int(h * scale))
                         frame_resized = cv2.resize(frame_rgb, (temp_w, temp_h))
                         
-                        # Create black canvas to letterbox during transition
-                        canvas = np.zeros((view_h, view_w, 3), dtype=np.uint8)
-                        y_off = (view_h - temp_h) // 2
-                        x_off = (view_w - temp_w) // 2
+                        # Always put onto a fixed-size canvas to stop UI flickering
+                        canvas = np.zeros((UI_HEIGHT, UI_WIDTH, 3), dtype=np.uint8)
+                        y_off = (UI_HEIGHT - temp_h) // 2
+                        x_off = (UI_WIDTH - temp_w) // 2
                         canvas[y_off:y_off+temp_h, x_off:x_off+temp_w] = frame_resized
                         
                         img = Image.fromarray(canvas)
-                        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(view_w, view_h))
+                        # CTK Image with fixed size ensures the widget doesn't jump
+                        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(UI_WIDTH, UI_HEIGHT))
                         self.update_callback(ctk_img)
                     except Exception:
                         pass

@@ -287,32 +287,29 @@ struct LiquidGlassModifier: ViewModifier {
                 // In iOS 18+, we use the native glassBackgroundEffect as the foundation
                 // then overlay the "Liquid" highlights and shadows.
                 ZStack {
-                    if #available(iOS 18.0, *) {
-                        Color.clear
-                            .glassBackgroundEffect()
-                            .clipShape(shape)
-                    } else {
-                        shape.fill(.ultraThinMaterial)
-                    }
+                    // Using Material as the base for glass on iOS 
+                    // and adding custom liquid layers for the iOS 26.3 aesthetic.
+                    shape.fill(.ultraThinMaterial)
+                        .opacity(0.95)
                     
                     // Liquid Highlight (Upper edge glow)
                     shape
                         .stroke(
                             LinearGradient(
-                                colors: [.white.opacity(0.4), .white.opacity(0.1), .clear],
+                                colors: [.white.opacity(0.5), .white.opacity(0.2), .clear],
                                 startPoint: .top,
                                 endPoint: .bottom
                             ),
-                            lineWidth: 0.5
+                            lineWidth: 0.6
                         )
                     
                     // Liquid Refraction (Inner soft glow)
                     shape
                         .fill(RadialGradient(
-                            colors: [.white.opacity(0.05), .clear],
+                            colors: [.white.opacity(0.1), .clear],
                             center: .topLeading,
                             startRadius: 0,
-                            endRadius: 50
+                            endRadius: 80
                         ))
                 }
             }

@@ -25,66 +25,57 @@ struct ContentView: View {
                     }
             } else {
                     VStack {
-                        // Top Bar (Premium Glass Style)
+                        // Top Bar (Liquid Glass Pro)
                         HStack {
                             if cameraManager.isRunning {
-                                HStack {
-                                    Circle().fill(Color.red).frame(width: 8, height: 8)
+                                HStack(spacing: 8) {
+                                    Circle().fill(Color.red)
+                                        .frame(width: 6, height: 6)
+                                        .shadow(color: .red, radius: 4)
                                     Text("LIVE")
-                                        .font(.system(size: 14, weight: .bold))
+                                        .font(.system(size: 12, weight: .black, design: .rounded))
                                         .foregroundColor(.white)
                                 }
-                                .padding(.horizontal, 12).padding(.vertical, 6)
-                                .background(.ultraThinMaterial)
-                                .glassBackgroundEffect()
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .padding(.horizontal, 14).padding(.vertical, 8)
+                                .glassEffect()
                                 
                                 Spacer()
                                 
                                 if let firstIP = serverIPs.first {
                                     Text("\(firstIP):\(portString)")
                                         .font(.system(.caption2, design: .monospaced))
-                                        .foregroundColor(.white.opacity(0.8))
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .background(.ultraThinMaterial)
-                                        .glassBackgroundEffect()
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        .foregroundColor(.white.opacity(0.9))
+                                        .padding(.horizontal, 14).padding(.vertical, 8)
+                                        .glassEffect()
                                 }
                             } else {
-                                Text("RoflCam Pro")
-                                    .font(.system(.title3, design: .rounded).bold())
-                                    .foregroundColor(.white)
+                                Text("RoflCam")
+                                    .font(.system(.title2, design: .rounded).weight(.heavy))
+                                    .foregroundStyle(.white)
+                                    .shadow(color: .black.opacity(0.3), radius: 10)
                                 Spacer()
                                 HStack(spacing: 8) {
-                                    Text("PORT:")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(.white.opacity(0.6))
+                                    Text("PORT")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.5))
                                     TextField("8080", text: $portString)
                                         .keyboardType(.numberPad)
                                         .foregroundColor(.yellow)
                                         .font(.system(.body, design: .monospaced))
-                                        .frame(width: 50)
-                                        .onChange(of: portString) { newValue in
-                                            if let newPort = Int(newValue) {
-                                                cameraManager.port = newPort
-                                                updateIPs()
-                                            }
-                                        }
+                                        .frame(width: 45)
                                 }
-                                .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(.ultraThinMaterial)
-                                .glassBackgroundEffect()
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .padding(.horizontal, 14).padding(.vertical, 10)
+                                .glassEffect()
                             }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 50)
+                        .padding(.horizontal, 25)
+                        .padding(.top, 60)
                         
                         Spacer()
                         
-                        // Bottom Controls
-                        VStack(spacing: 16) {
-                            // Settings row (Glass Capsules)
+                        // Main Control Surface
+                        VStack(spacing: 20) {
+                            // Floating Lens & FPS Bar
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     Menu {
@@ -93,15 +84,13 @@ struct ContentView: View {
                                         }
                                     } label: {
                                         HStack {
-                                            Image(systemName: "camera.fill")
-                                            Text(cameraManager.currentLens == "ultrawide" ? "UW" : cameraManager.currentLens.capitalized)
+                                            Image(systemName: "camera.aperture")
+                                            Text(cameraManager.currentLens.capitalized)
                                         }
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(.system(size: 13, weight: .bold))
                                         .foregroundColor(cameraManager.currentLens == "front" ? .blue : .yellow)
-                                        .padding(.horizontal, 12).padding(.vertical, 8)
-                                        .background(.ultraThinMaterial)
-                                        .glassBackgroundEffect()
-                                        .clipShape(Capsule())
+                                        .padding(.horizontal, 16).padding(.vertical, 12)
+                                        .glassEffect()
                                     }
 
                                     Menu {
@@ -110,12 +99,10 @@ struct ContentView: View {
                                         }
                                     } label: {
                                         Text(cameraManager.currentResolutionString)
-                                            .font(.system(size: 13, weight: .semibold))
+                                            .font(.system(size: 13, weight: .bold))
                                             .foregroundColor(.white)
-                                            .padding(.horizontal, 12).padding(.vertical, 8)
-                                            .background(.ultraThinMaterial)
-                                            .glassBackgroundEffect()
-                                            .clipShape(Capsule())
+                                            .padding(.horizontal, 16).padding(.vertical, 12)
+                                            .glassEffect()
                                     }
 
                                     Menu {
@@ -124,79 +111,70 @@ struct ContentView: View {
                                         }
                                     } label: {
                                         Text("\(cameraManager.currentFPS) FPS")
-                                            .font(.system(size: 13, weight: .semibold))
+                                            .font(.system(size: 13, weight: .bold))
                                             .foregroundColor(.white)
-                                            .padding(.horizontal, 12).padding(.vertical, 8)
-                                            .background(.ultraThinMaterial)
-                                            .glassBackgroundEffect()
-                                            .clipShape(Capsule())
-                                    }
-                                    
-                                    Button(action: {
-                                        cameraManager.isFlashlightOn.toggle()
-                                    }) {
-                                        Image(systemName: cameraManager.isFlashlightOn ? "flashlight.on.fill" : "flashlight.off.fill")
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundColor(cameraManager.isFlashlightOn ? .white : .yellow)
-                                            .padding(.horizontal, 12).padding(.vertical, 8)
-                                            .background(cameraManager.isFlashlightOn ? Color.yellow.opacity(0.8) : Color.clear)
-                                            .background(.ultraThinMaterial)
-                                            .glassBackgroundEffect()
-                                            .clipShape(Capsule())
+                                            .padding(.horizontal, 16).padding(.vertical, 12)
+                                            .glassEffect()
                                     }
                                 }
-                                .padding(.horizontal, 20)
+                                .padding(.horizontal, 25)
                             }
                             
-                            // Sliders
-                            VStack(spacing: 12) {
-                                HStack(spacing: 15) {
-                                    Image(systemName: "plus.magnifyingglass")
-                                        .foregroundColor(.white.opacity(0.7))
+                            // Interactive Liquid Sliders
+                            VStack(spacing: 15) {
+                                HStack(spacing: 20) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.6))
                                     Slider(value: $cameraManager.zoomFactor, in: 1.0...10.0, step: 0.1)
-                                        .accentColor(.yellow)
+                                        .tint(.yellow)
                                 }
-                                HStack(spacing: 15) {
+                                HStack(spacing: 20) {
                                     Image(systemName: "sun.max.fill")
-                                        .foregroundColor(.white.opacity(0.7))
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.6))
                                     Slider(value: $cameraManager.exposureValue, in: -8.0...8.0, step: 0.5)
-                                        .accentColor(.yellow)
+                                        .tint(.yellow)
                                 }
                             }
-                            .padding(.horizontal, 40)
-                            .padding(.vertical, 20)
-                            .background(.ultraThinMaterial)
-                            .glassBackgroundEffect()
-                            .clipShape(RoundedRectangle(cornerRadius: 30))
-                            .padding(.horizontal, 20)
+                            .padding(25)
+                            .glassEffect()
+                            .padding(.horizontal, 25)
                             
-                            // Action Buttons
-                            HStack(spacing: 40) {
+                            // Liquid Action Group
+                            HStack(spacing: 50) {
                                 if cameraManager.isRunning {
                                     Button(action: blackoutScreen) {
-                                        ZStack {
-                                            Circle().fill(.ultraThinMaterial).glassBackgroundEffect()
-                                            Image(systemName: "moon.stars.fill")
-                                                .font(.system(size: 20))
-                                                .foregroundColor(.white)
-                                        }
-                                        .frame(width: 60, height: 60)
+                                        Image(systemName: "moon.fill")
+                                            .font(.system(size: 22))
+                                            .foregroundColor(.white)
+                                            .frame(width: 65, height: 65)
+                                            .glassEffect()
                                     }
                                     
                                     Button(action: {
                                         cameraManager.stop()
                                     }) {
                                         ZStack {
-                                            Circle().fill(.white).frame(width: 80, height: 80)
-                                            Circle().fill(.black).frame(width: 72, height: 72)
-                                            RoundedRectangle(cornerRadius: 8)
+                                            Circle().fill(.white.opacity(0.2)).frame(width: 90, height: 90).glassEffect()
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
                                                 .fill(Color.red)
-                                                .frame(width: 32, height: 32)
+                                                .frame(width: 35, height: 35)
+                                                .shadow(color: .red.opacity(0.5), radius: 15)
                                         }
                                     }
+                                    .buttonStyle(.plain)
                                     
-                                    // Placeholder
-                                    Color.clear.frame(width: 60, height: 60)
+                                    Button(action: {
+                                        cameraManager.isFlashlightOn.toggle()
+                                    }) {
+                                        Image(systemName: cameraManager.isFlashlightOn ? "flashlight.on.fill" : "flashlight.off.fill")
+                                            .font(.system(size: 22))
+                                            .foregroundColor(cameraManager.isFlashlightOn ? .white : .yellow)
+                                            .frame(width: 65, height: 65)
+                                            .background(cameraManager.isFlashlightOn ? Color.yellow.opacity(0.3) : Color.clear)
+                                            .glassEffect()
+                                    }
                                     
                                 } else {
                                     Button(action: {
@@ -206,14 +184,17 @@ struct ContentView: View {
                                         startAutoBlackoutTimer()
                                     }) {
                                         ZStack {
-                                            Circle().fill(.white).frame(width: 80, height: 80)
-                                            Circle().fill(.black).frame(width: 72, height: 72)
-                                            Circle().fill(.red).frame(width: 60, height: 60)
+                                            Circle().fill(.white.opacity(0.2)).frame(width: 90, height: 90).glassEffect()
+                                            Circle()
+                                                .fill(Color.red)
+                                                .frame(width: 70, height: 70)
+                                                .shadow(color: .red.opacity(0.5), radius: 20)
                                         }
                                     }
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .padding(.bottom, 50)
+                            .padding(.bottom, 60)
                         }
                     }
                 .onTapGesture {

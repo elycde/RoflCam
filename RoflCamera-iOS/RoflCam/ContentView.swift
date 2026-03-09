@@ -128,7 +128,7 @@ struct ContentView: View {
                             
                             // Interactive Liquid Sliders
                             VStack(spacing: 20) {
-                                ControlSliderFloat(icon: "magnifyingglass", value: $cameraManager.zoomFactor, range: 1.0...10.0)
+                                ControlSliderCGFloat(icon: "magnifyingglass", value: $cameraManager.zoomFactor, range: 1.0...10.0)
                                 ControlSliderFloat(icon: "sun.max.fill", value: $cameraManager.exposureValue, range: -8.0...8.0)
                             }
                             .padding(25)
